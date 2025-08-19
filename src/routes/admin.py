@@ -102,16 +102,42 @@ def backup_management():
     </html>
     ''')
 
+@admin_bp.route('/admin/backup')
+def backup_management():
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Backup Management</title>
+        <style>
+            body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; padding: 20px; }
+            .container { max-width: 800px; margin: 0 auto; }
+            .back-btn { display: inline-block; margin-bottom: 20px; padding: 8px 16px; background: #555; color: white; text-decoration: none; border-radius: 4px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #ff6b35; }
+            .btn { padding: 12px 24px; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <a href="/admin" class="back-btn">← Back to Admin</a>
+            <div class="header">
+                <h1>Backup Management</h1>
+            </div>
+            <button class="btn" onclick="alert('Backup system will be restored!')">Create Backup</button>
+        </div>
+    </body>
+    </html>
+    """)
+
 @admin_bp.route('/admin/portfolio')
 def portfolio_management():
-    """Portfolio management interface"""
-    return render_template_string('''
+    return render_template_string("""
     <!DOCTYPE html>
     <html>
     <head>
         <title>Portfolio Management</title>
         <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
             body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; padding: 20px; }
             .container { max-width: 800px; margin: 0 auto; }
             .back-btn { display: inline-block; margin-bottom: 20px; padding: 8px 16px; background: #555; color: white; text-decoration: none; border-radius: 4px; }
@@ -129,8 +155,6 @@ def portfolio_management():
         </div>
     </body>
     </html>
-    ''')
-
-    ''')
+    """)
 
 # [Keep your existing backup_management and portfolio_management functions]
