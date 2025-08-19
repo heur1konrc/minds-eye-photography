@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template_string, jsonify, request, current_app, send_file
+from flask import Blueprint, render_template_string, request, jsonify, send_file, current_app
 from werkzeug.utils import secure_filename
 import os
 import json
@@ -18,7 +18,7 @@ def allowed_file(filename):
 def create_local_backup(custom_filename=None):
     """Create comprehensive local backup as tar.gz file with custom filename"""
     try:
-        # Use custom filename or generate timestamp-based one for here rick
+        # Use custom filename or generate timestamp-based one
         if custom_filename:
             # Sanitize the filename
             safe_filename = secure_filename(custom_filename)
@@ -106,26 +106,28 @@ def portfolio_management():
         total_images_db = PortfolioImage.query.count()
         active_images_db = PortfolioImage.query.filter_by(is_active=True).count()
         
-        # Find orphaned files (images on disk but not in database)
-        assets_path = os.path.join(current_app.root_path, 'static', 'assets')
+        # Get all categories for the interface
+        categories = Category.query.filter_by(is_active=True).order_by(Category.name).all()
         
-        # Get all image files from disk
+        # Detect orphaned files
+        assets_path = os.path.join(current_app.static_folder, 'assets')
         orphaned_files = []
+        
         if os.path.exists(assets_path):
-            # Get all files in assets folder
-            disk_files = [f for f in os.listdir(assets_path) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))]
+            # Get all image files from disk
+            disk_files = set()
+            for file in os.listdir(assets_path):
+                if allowed_file(file):
+                    disk_files.add(file)
             
-            # Get filenames already in database
-            db_filenames = {img.filename for img in PortfolioImage.query.all()}
+            # Get all filenames from database
+            db_files = {img.filename for img in PortfolioImage.query.all()}
             
             # Find orphaned files
-            orphaned_files = [f for f in disk_files if f not in db_filenames]
+            orphaned_files = list(disk_files - db_files)
         
-        # Get all images from database for display
+        # Get all portfolio images with proper titles
         portfolio_images = PortfolioImage.query.order_by(PortfolioImage.id.desc()).all()
-        
-        # Get all active categories for the interface
-        categories = Category.query.filter_by(is_active=True).order_by(Category.name).all()
         
         return render_template_string("""
         <!DOCTYPE html>
@@ -133,8 +135,8 @@ def portfolio_management():
         <head>
             <title>Portfolio Management</title>
             <style>
-                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
-                h1 { color: #ff6b35; }
+                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; line-height: 1.6; }
+                h1 { color: #ff6b35; margin-bottom: 10px; }
                 .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
                 .back-btn:hover { background: #666; }
                 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
@@ -143,7 +145,7 @@ def portfolio_management():
                 .stat-box p { color: #ccc; margin: 5px 0 0 0; }
                 .section { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
                 .section h3 { color: #ff6b35; margin-bottom: 15px; }
-                .btn { padding: 12px 24px; margin: 5px; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer; }
+                .btn { padding: 12px 24px; margin: 5px; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
                 .btn:hover { background: #e55a2b; }
                 .btn.success { background: #28a745; }
                 .btn.success:hover { background: #218838; }
@@ -151,59 +153,50 @@ def portfolio_management():
                 .btn.secondary:hover { background: #5a6268; }
                 .btn.danger { background: #dc3545; }
                 .btn.danger:hover { background: #c82333; }
-                .status { padding: 15px; margin: 15px 0; border-radius: 5px; }
-                .status.success { background: #28a745; }
-                .status.error { background: #dc3545; }
-                .status.info { background: #17a2b8; }
-                
-                /* Enhanced Portfolio Grid Styles */
+                .bulk-actions { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
+                .bulk-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+                .bulk-category-select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
                 .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 20px; }
-                .image-card { background: #333; border-radius: 10px; overflow: hidden; position: relative; }
+                .image-card { background: #333; border-radius: 10px; overflow: hidden; transition: transform 0.2s; position: relative; }
+                .image-card:hover { transform: translateY(-5px); }
                 .image-card.selected { border: 3px solid #ff6b35; }
-                
                 .image-header { position: relative; }
                 .image-header img { width: 100%; height: 200px; object-fit: cover; }
                 .image-select { position: absolute; top: 10px; left: 10px; width: 20px; height: 20px; }
                 .image-id { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
-                
                 .image-content { padding: 15px; }
-                .image-title { color: #ff6b35; font-size: 1.1em; font-weight: bold; margin-bottom: 8px; }
-                .image-description { color: #ccc; font-size: 0.9em; margin-bottom: 12px; min-height: 20px; }
-                
-                .current-categories { margin-bottom: 15px; }
-                .current-categories h5 { color: #ff6b35; margin-bottom: 8px; font-size: 0.9em; }
-                .category-badge { display: inline-block; background: #ff6b35; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; margin: 2px; }
+                .image-title { font-size: 1.1em; font-weight: bold; color: #ff6b35; margin-bottom: 5px; }
+                .image-description { color: #ccc; margin-bottom: 15px; font-size: 0.9em; }
+                .current-categories h5 { color: #ff6b35; margin: 10px 0 5px 0; font-size: 0.9em; }
+                .category-badges { margin-bottom: 15px; }
+                .category-badge { background: #ff6b35; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; margin: 2px; display: inline-block; }
                 .no-categories { color: #888; font-style: italic; font-size: 0.8em; }
+                .update-categories h5 { color: #ff6b35; margin: 10px 0 5px 0; font-size: 0.9em; }
+                .category-checkboxes { margin-bottom: 15px; }
+                .category-checkbox { display: block; margin: 5px 0; color: #ccc; font-size: 0.9em; }
+                .category-checkbox input { margin-right: 8px; }
+                .image-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+                .image-actions .btn { padding: 8px 12px; font-size: 0.8em; }
+                .status { padding: 15px; margin: 15px 0; border-radius: 5px; }
+                .status.success { background: #28a745; }
+                .status.error { background: #dc3545; }
+                .status.info { background: #17a2b8; }
+                .orphaned-list { background: #333; padding: 15px; border-radius: 5px; margin: 15px 0; }
+                .orphaned-list ul { margin: 10px 0; padding-left: 20px; }
+                .orphaned-list li { color: #ccc; margin: 5px 0; }
                 
-                .update-categories { margin-bottom: 15px; }
-                .update-categories h5 { color: #ff6b35; margin-bottom: 8px; font-size: 0.9em; }
-                .category-checkboxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 5px; }
-                .category-checkbox { display: flex; align-items: center; font-size: 0.85em; }
-                .category-checkbox input { margin-right: 6px; }
-                
-                .image-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-                .image-actions button { padding: 6px 12px; font-size: 0.8em; border: none; border-radius: 4px; cursor: pointer; }
-                
-                .bulk-actions { background: #2a2a2a; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-                .bulk-actions h3 { color: #ff6b35; margin-bottom: 15px; }
-                .bulk-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-                .bulk-category-select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
-                
-                .orphaned-list { background: #333; padding: 15px; border-radius: 8px; margin: 15px 0; }
-                .orphaned-list ul { list-style: none; margin: 0; padding: 0; }
-                .orphaned-list li { padding: 5px 0; color: #ccc; font-family: monospace; }
-                
-                /* Edit Modal Styles */
+                /* Modal styles */
                 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
-                .modal-content { background-color: #2a2a2a; margin: 5% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 500px; }
-                .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-                .modal-header h3 { color: #ff6b35; margin: 0; }
-                .close { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
-                .close:hover { color: white; }
-                .form-group { margin-bottom: 15px; }
+                .modal-content { background-color: #2a2a2a; margin: 5% auto; padding: 0; border-radius: 10px; width: 90%; max-width: 500px; }
+                .modal-header { background: #ff6b35; color: white; padding: 15px 20px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; }
+                .modal-header h3 { margin: 0; }
+                .close { color: white; font-size: 28px; font-weight: bold; cursor: pointer; }
+                .close:hover { opacity: 0.7; }
+                .form-group { margin-bottom: 15px; padding: 0 20px; }
                 .form-group label { display: block; color: #ff6b35; margin-bottom: 5px; font-weight: bold; }
-                .form-input { width: 100%; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
-                .form-textarea { width: 100%; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; min-height: 80px; resize: vertical; }
+                .form-input { width: 100%; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; box-sizing: border-box; }
+                .form-textarea { width: 100%; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; min-height: 80px; resize: vertical; box-sizing: border-box; }
+                .modal-footer { padding: 20px; text-align: right; }
             </style>
         </head>
         <body>
@@ -287,7 +280,6 @@ def portfolio_management():
                             <div class="current-categories">
                                 <h5>Current Categories:</h5>
                                 <div class="category-badges">
-                                    <!-- Categories will be loaded via JavaScript -->
                                     <span class="no-categories">Loading...</span>
                                 </div>
                             </div>
@@ -335,7 +327,7 @@ def portfolio_management():
                             <label for="editDescription">Description:</label>
                             <textarea id="editDescription" class="form-textarea" placeholder="Enter image description"></textarea>
                         </div>
-                        <div style="text-align: right; margin-top: 20px;">
+                        <div class="modal-footer">
                             <button type="button" class="btn secondary" onclick="closeEditModal()">Cancel</button>
                             <button type="button" class="btn" onclick="saveImageEdit()">Save Changes</button>
                         </div>
@@ -599,7 +591,7 @@ def portfolio_management():
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ Image "${title}" deleted successfully!
+                            ✅ Image "${result.title}" deleted successfully!
                         </div>`;
                         
                         // Remove the image card from display
@@ -622,18 +614,16 @@ def portfolio_management():
                 try {
                     const response = await fetch('/api/admin/portfolio/add-orphaned', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
+                        headers: { 'Content-Type': 'application/json' }
                     });
                     
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ Success! Added ${result.added_count} images to database.<br>
-                            <strong>Images are now available in your portfolio API!</strong>
+                            ✅ ${result.added_count} orphaned images added to database!
                         </div>`;
                         
+                        // Reload the page to show the new images
                         setTimeout(() => {
                             window.location.reload();
                         }, 2000);
@@ -643,14 +633,6 @@ def portfolio_management():
                     }
                 } catch (error) {
                     statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
-                }
-            }
-            
-            // Close modal when clicking outside
-            window.onclick = function(event) {
-                const modal = document.getElementById('editModal');
-                if (event.target == modal) {
-                    closeEditModal();
                 }
             }
             </script>
@@ -664,34 +646,308 @@ def portfolio_management():
         categories=categories)
         
     except Exception as e:
-        return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Portfolio Management</title>
-            <style>
-                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
-                h1 { color: #ff6b35; }
-                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
-                .error { background: #dc3545; padding: 15px; border-radius: 5px; margin: 20px 0; }
-            </style>
-        </head>
-        <body>
-            <a href="/admin" class="back-btn">← Back to Admin</a>
-            <h1>Portfolio Management</h1>
-            <div class="error">
-                <strong>Error loading portfolio:</strong> {{ error }}
-            </div>
-        </body>
-        </html>
-        """, error=str(e))
+        return f"Error loading portfolio management: {str(e)}"
+
+# ===== MISSING API ROUTES - THESE ARE THE CRITICAL FIXES =====
+
+@admin_bp.route('/api/admin/portfolio/image-categories', methods=['GET'])
+def get_image_categories():
+    """Get all image-category relationships for display"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        # Get all images with their categories
+        images = PortfolioImage.query.all()
+        result = {}
+        
+        for image in images:
+            result[str(image.id)] = [
+                {'id': cat.id, 'name': cat.name} 
+                for cat in image.categories
+            ]
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/images/<int:image_id>/categories', methods=['POST'])
+def update_image_categories(image_id):
+    """Update categories for a specific image"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        data = request.get_json()
+        category_ids = data.get('category_ids', [])
+        
+        # Get the image
+        image = PortfolioImage.query.get_or_404(image_id)
+        
+        # Clear existing categories
+        image.categories.clear()
+        
+        # Add new categories
+        for cat_id in category_ids:
+            category = Category.query.get(cat_id)
+            if category:
+                image.categories.append(category)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'title': image.title or 'Untitled',
+            'categories': [{'id': cat.id, 'name': cat.name} for cat in image.categories]
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/bulk-add-category', methods=['POST'])
+def bulk_add_category():
+    """Add a category to multiple images"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        data = request.get_json()
+        image_ids = data.get('image_ids', [])
+        category_id = data.get('category_id')
+        
+        if not category_id:
+            return jsonify({'error': 'Category ID is required'}), 400
+        
+        category = Category.query.get_or_404(category_id)
+        updated_count = 0
+        
+        for image_id in image_ids:
+            image = PortfolioImage.query.get(image_id)
+            if image and category not in image.categories:
+                image.categories.append(category)
+                updated_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'updated_count': updated_count,
+            'category_name': category.name
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/bulk-remove-category', methods=['POST'])
+def bulk_remove_category():
+    """Remove a category from multiple images"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        data = request.get_json()
+        image_ids = data.get('image_ids', [])
+        category_id = data.get('category_id')
+        
+        if not category_id:
+            return jsonify({'error': 'Category ID is required'}), 400
+        
+        category = Category.query.get_or_404(category_id)
+        updated_count = 0
+        
+        for image_id in image_ids:
+            image = PortfolioImage.query.get(image_id)
+            if image and category in image.categories:
+                image.categories.remove(category)
+                updated_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'updated_count': updated_count,
+            'category_name': category.name
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/images/<int:image_id>/edit', methods=['POST'])
+def edit_image_details(image_id):
+    """Edit image title and description"""
+    try:
+        from models.database import db, PortfolioImage
+        
+        data = request.get_json()
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip()
+        
+        image = PortfolioImage.query.get_or_404(image_id)
+        image.title = title if title else None
+        image.description = description if description else None
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'title': image.title,
+            'description': image.description
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/images/<int:image_id>/delete', methods=['DELETE'])
+def delete_image(image_id):
+    """Delete an image from database and filesystem"""
+    try:
+        from models.database import db, PortfolioImage
+        
+        image = PortfolioImage.query.get_or_404(image_id)
+        title = image.title or 'Untitled'
+        filename = image.filename
+        
+        # Delete from database
+        db.session.delete(image)
+        db.session.commit()
+        
+        # Delete file from filesystem
+        try:
+            file_path = os.path.join(current_app.static_folder, 'assets', filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Warning: Could not delete file {filename}: {e}")
+        
+        return jsonify({
+            'success': True,
+            'title': title
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/add-orphaned', methods=['POST'])
+def add_orphaned_images():
+    """Add orphaned images from filesystem to database"""
+    try:
+        from models.database import db, PortfolioImage
+        
+        assets_path = os.path.join(current_app.static_folder, 'assets')
+        if not os.path.exists(assets_path):
+            return jsonify({'error': 'Assets directory does not exist'}), 400
+        
+        # Get all image files from disk
+        disk_files = set()
+        for file in os.listdir(assets_path):
+            if allowed_file(file):
+                disk_files.add(file)
+        
+        # Get all filenames from database
+        db_files = {img.filename for img in PortfolioImage.query.all()}
+        
+        # Find orphaned files
+        orphaned_files = list(disk_files - db_files)
+        
+        added_count = 0
+        for filename in orphaned_files:
+            # Create a clean title from filename
+            title = os.path.splitext(filename)[0]
+            # Remove UUID-like patterns and clean up
+            if len(title) > 32 and '-' in title:
+                # This looks like a UUID filename, create a generic title
+                title = f"Image {added_count + 1}"
+            else:
+                # Clean up the filename for display
+                title = title.replace('_', ' ').replace('-', ' ').title()
+            
+            new_image = PortfolioImage(
+                filename=filename,
+                title=title,
+                is_active=True
+            )
+            db.session.add(new_image)
+            added_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'added_count': added_count
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/upload', methods=['POST'])
+def upload_image():
+    """Upload a single image file"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        # Generate unique filename
+        original_filename = secure_filename(file.filename)
+        file_extension = os.path.splitext(original_filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        
+        # Save file
+        assets_path = os.path.join(current_app.static_folder, 'assets')
+        if not os.path.exists(assets_path):
+            os.makedirs(assets_path)
+        
+        file_path = os.path.join(assets_path, unique_filename)
+        file.save(file_path)
+        
+        # Create database entry
+        title_prefix = request.form.get('title_prefix', '').strip()
+        category_id = request.form.get('category_id')
+        
+        # Create title
+        if title_prefix:
+            title = f"{title_prefix} - {os.path.splitext(original_filename)[0]}"
+        else:
+            title = os.path.splitext(original_filename)[0].replace('_', ' ').title()
+        
+        new_image = PortfolioImage(
+            filename=unique_filename,
+            title=title,
+            is_active=True
+        )
+        
+        # Add category if specified
+        if category_id:
+            category = Category.query.get(category_id)
+            if category:
+                new_image.categories.append(category)
+        
+        db.session.add(new_image)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'filename': unique_filename,
+            'title': title,
+            'id': new_image.id
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== EXISTING ROUTES (Upload, Backup, Categories) =====
 
 @admin_bp.route('/admin/upload')
 def upload_interface():
     try:
-        from models.database import db, Category
+        from models.database import Category
         
-        # Get all active categories for selection
+        # Get all active categories for the dropdown
         categories = Category.query.filter_by(is_active=True).order_by(Category.name).all()
         
         return render_template_string("""
@@ -700,78 +956,84 @@ def upload_interface():
         <head>
             <title>Upload Images</title>
             <style>
-                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
-                h1 { color: #ff6b35; }
+                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; line-height: 1.6; }
+                h1 { color: #ff6b35; margin-bottom: 10px; }
                 .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
                 .back-btn:hover { background: #666; }
                 .upload-section { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
                 .upload-section h3 { color: #ff6b35; margin-bottom: 15px; }
-                .upload-area { border: 2px dashed #555; padding: 40px; text-align: center; border-radius: 10px; margin: 20px 0; transition: border-color 0.3s; }
-                .upload-area.dragover { border-color: #ff6b35; background: rgba(255, 107, 53, 0.1); }
-                .upload-area input[type="file"] { display: none; }
-                .upload-btn { background: #ff6b35; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; margin: 10px; }
-                .upload-btn:hover { background: #e55a2b; }
+                .drop-zone { border: 3px dashed #555; border-radius: 10px; padding: 40px; text-align: center; margin: 20px 0; transition: all 0.3s; cursor: pointer; }
+                .drop-zone:hover, .drop-zone.dragover { border-color: #ff6b35; background: rgba(255, 107, 53, 0.1); }
+                .drop-zone p { color: #ccc; margin: 10px 0; }
+                .file-input { display: none; }
+                .btn { padding: 12px 24px; margin: 5px; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
+                .btn:hover { background: #e55a2b; }
+                .btn:disabled { background: #666; cursor: not-allowed; }
+                .btn.secondary { background: #6c757d; }
+                .btn.secondary:hover { background: #5a6268; }
                 .form-group { margin: 15px 0; }
-                .form-group label { display: block; margin-bottom: 5px; color: #ff6b35; font-weight: bold; }
-                .form-input { padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; width: 100%; max-width: 400px; }
-                .form-select { padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; width: 100%; max-width: 400px; }
+                .form-group label { display: block; color: #ff6b35; margin-bottom: 5px; font-weight: bold; }
+                .form-input, .form-select { padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; width: 100%; max-width: 400px; }
+                .file-list { margin: 20px 0; }
+                .file-item { background: #333; padding: 15px; border-radius: 5px; margin: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+                .file-info { flex: 1; }
+                .file-actions { margin-left: 15px; }
+                .remove-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+                .remove-btn:hover { background: #c82333; }
+                .progress-container { display: none; margin: 20px 0; }
+                .progress-bar { background: #333; border-radius: 10px; overflow: hidden; height: 20px; }
+                .progress-fill { background: #ff6b35; height: 100%; width: 0%; transition: width 0.3s; }
+                .progress-text { text-align: center; margin: 10px 0; color: #ccc; }
                 .status { padding: 15px; margin: 15px 0; border-radius: 5px; }
                 .status.success { background: #28a745; }
                 .status.error { background: #dc3545; }
                 .status.info { background: #17a2b8; }
-                .file-list { margin: 20px 0; }
-                .file-item { background: #333; padding: 10px; margin: 5px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
-                .file-info { flex-grow: 1; }
-                .file-actions { margin-left: 10px; }
-                .remove-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
-                .remove-btn:hover { background: #c82333; }
-                .progress-bar { width: 100%; height: 20px; background: #333; border-radius: 10px; margin: 10px 0; overflow: hidden; }
-                .progress-fill { height: 100%; background: #28a745; width: 0%; transition: width 0.3s; }
-                .upload-options { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
             </style>
         </head>
         <body>
             <a href="/admin" class="back-btn">← Back to Admin</a>
             <h1>Upload Images</h1>
-            <p>Upload multiple images to your portfolio with automatic database integration</p>
+            <p>Upload multiple images to your portfolio with drag & drop or file selection</p>
             
             <div class="upload-section">
-                <h3>📁 Select Images to Upload</h3>
-                <div class="upload-area" id="uploadArea">
-                    <p>Drag & drop images here or click to select files</p>
-                    <input type="file" id="fileInput" multiple accept="image/*">
-                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-                        Choose Files
-                    </button>
+                <h3>📁 Upload Settings</h3>
+                <div class="form-group">
+                    <label for="defaultTitle">Title Prefix (optional):</label>
+                    <input type="text" id="defaultTitle" class="form-input" placeholder="e.g., Wedding 2025">
+                    <small style="color: #aaa; display: block; margin-top: 5px;">Will be added to the beginning of each image title</small>
                 </div>
-                
-                <div class="upload-options">
-                    <div class="form-group">
-                        <label for="defaultTitle">Default Title Prefix (optional):</label>
-                        <input type="text" id="defaultTitle" class="form-input" placeholder="e.g., 'Portfolio 2025'">
-                        <small style="color: #aaa;">Will be combined with filename</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="defaultCategory">Default Category (optional):</label>
-                        <select id="defaultCategory" class="form-select">
-                            <option value="">No default category</option>
-                            {% for category in categories %}
-                            <option value="{{ category.id }}">{{ category.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label for="defaultCategory">Default Category (optional):</label>
+                    <select id="defaultCategory" class="form-select">
+                        <option value="">No default category</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <small style="color: #aaa; display: block; margin-top: 5px;">All uploaded images will be assigned to this category</small>
                 </div>
+            </div>
+            
+            <div class="upload-section">
+                <h3>📸 Select Images</h3>
+                <div class="drop-zone" id="dropZone">
+                    <p style="font-size: 1.2em; color: #ff6b35;">📁 Drag & Drop Images Here</p>
+                    <p>or</p>
+                    <button class="btn" onclick="document.getElementById('fileInput').click()">Choose Files</button>
+                    <p style="font-size: 0.9em; margin-top: 15px;">Supported formats: JPG, PNG, GIF, WebP</p>
+                </div>
+                <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
                 
                 <div id="fileList" class="file-list"></div>
                 
-                <div id="uploadProgress" style="display: none;">
+                <div class="progress-container" id="uploadProgress">
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill"></div>
                     </div>
-                    <p id="progressText">Uploading...</p>
+                    <div class="progress-text" id="progressText">Preparing upload...</div>
                 </div>
                 
-                <button class="upload-btn" id="uploadButton" onclick="uploadFiles()" style="display: none;">
+                <button id="uploadButton" class="btn" onclick="uploadFiles()" style="display: none;">
                     Upload Selected Images
                 </button>
             </div>
@@ -781,22 +1043,22 @@ def upload_interface():
             <script>
             let selectedFiles = [];
             
-            // Drag and drop functionality
-            const uploadArea = document.getElementById('uploadArea');
+            const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
             
-            uploadArea.addEventListener('dragover', (e) => {
+            // Drag and drop functionality
+            dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                uploadArea.classList.add('dragover');
+                dropZone.classList.add('dragover');
             });
             
-            uploadArea.addEventListener('dragleave', () => {
-                uploadArea.classList.remove('dragover');
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
             });
             
-            uploadArea.addEventListener('drop', (e) => {
+            dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                uploadArea.classList.remove('dragover');
+                dropZone.classList.remove('dragover');
                 const files = Array.from(e.dataTransfer.files);
                 addFiles(files);
             });
@@ -1039,6 +1301,56 @@ def backup_management():
     </html>
     """)
 
+@admin_bp.route('/api/admin/backup/local', methods=['POST'])
+def create_backup():
+    """Create and return local backup"""
+    try:
+        data = request.get_json()
+        custom_filename = data.get('filename') if data else None
+        
+        success, result = create_local_backup(custom_filename)
+        
+        if success:
+            # Store backup info for download
+            backup_id = str(uuid.uuid4())
+            backup_files[backup_id] = result
+            
+            return jsonify({
+                'success': True,
+                'filename': result['filename'],
+                'size': result['size'],
+                'timestamp': result['timestamp'],
+                'download_url': f'/api/admin/backup/download/{backup_id}'
+            })
+        else:
+            return jsonify({'success': False, 'message': result}), 500
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/admin/backup/download/<backup_id>')
+def download_backup(backup_id):
+    """Download backup file"""
+    try:
+        if backup_id not in backup_files:
+            return "Backup not found", 404
+        
+        backup_info = backup_files[backup_id]
+        backup_path = backup_info['path']
+        
+        if not os.path.exists(backup_path):
+            return "Backup file not found", 404
+        
+        return send_file(
+            backup_path,
+            as_attachment=True,
+            download_name=backup_info['filename'],
+            mimetype='application/gzip'
+        )
+        
+    except Exception as e:
+        return f"Download error: {str(e)}", 500
+
 @admin_bp.route('/admin/categories')
 def category_management():
     try:
@@ -1136,13 +1448,8 @@ def category_management():
                     {% for category in categories %}
                     <div class="category-item">
                         <h4>{{ category.name }}</h4>
+                        <p><strong>Status:</strong> {{ 'Active' if category.is_active else 'Inactive' }}</p>
                         <p><strong>Description:</strong> {{ category.description or 'No description' }}</p>
-                        <p><strong>Status:</strong> 
-                            <span style="color: {{ '#28a745' if category.is_active else '#dc3545' }};">
-                                {{ 'Active' if category.is_active else 'Inactive' }}
-                            </span>
-                        </p>
-                        <p><strong>Created:</strong> {{ category.created_at.strftime('%Y-%m-%d') if category.created_at else 'Unknown' }}</p>
                         <div class="category-actions">
                             {% if category.is_active %}
                             <button class="btn secondary" onclick="toggleCategory({{ category.id }}, false)">Deactivate</button>
@@ -1173,7 +1480,7 @@ def category_management():
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ Success! Created ${result.created_count} default categories.
+                            ✅ ${result.created_count} default categories created successfully!
                         </div>`;
                         setTimeout(() => window.location.reload(), 2000);
                     } else {
@@ -1186,15 +1493,15 @@ def category_management():
             }
             
             async function createCategory() {
-                const statusDiv = document.getElementById('status');
                 const name = document.getElementById('categoryName').value.trim();
                 const description = document.getElementById('categoryDescription').value.trim();
                 
                 if (!name) {
-                    statusDiv.innerHTML = '<div class="status error">❌ Category name is required</div>';
+                    alert('Please enter a category name');
                     return;
                 }
                 
+                const statusDiv = document.getElementById('status');
                 statusDiv.innerHTML = '<div class="status info">Creating category...</div>';
                 
                 try {
@@ -1236,7 +1543,7 @@ def category_management():
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ Category "${result.name}" ${activate ? 'activated' : 'deactivated'} successfully!
+                            ✅ Category "${result.name}" ${activate ? 'activated' : 'deactivated'}!
                         </div>`;
                         setTimeout(() => window.location.reload(), 1500);
                     } else {
@@ -1265,7 +1572,7 @@ def category_management():
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ Category "${categoryName}" deleted successfully!
+                            ✅ Category "${result.name}" deleted successfully!
                         </div>`;
                         setTimeout(() => window.location.reload(), 1500);
                     } else {
@@ -1285,162 +1592,20 @@ def category_management():
         active_categories=active_categories)
         
     except Exception as e:
-        return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Category Management</title>
-            <style>
-                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
-                h1 { color: #ff6b35; }
-                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
-                .error { background: #dc3545; padding: 15px; border-radius: 5px; margin: 20px 0; }
-            </style>
-        </head>
-        <body>
-            <a href="/admin" class="back-btn">← Back to Admin</a>
-            <h1>Category Management</h1>
-            <div class="error">
-                <strong>Error loading categories:</strong> {{ error }}
-            </div>
-        </body>
-        </html>
-        """, error=str(e))
+        return f"Error loading category management: {str(e)}"
 
-# API Routes for file upload functionality
-@admin_bp.route('/api/admin/upload', methods=['POST'])
-def api_upload_file():
-    """API endpoint to handle file uploads"""
-    try:
-        from models.database import db, PortfolioImage, Category
-        
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-        
-        if not allowed_file(file.filename):
-            return jsonify({'error': 'Invalid file type'}), 400
-        
-        # Get form data
-        title_prefix = request.form.get('title_prefix', '').strip()
-        category_id = request.form.get('category_id', '').strip()
-        
-        # Generate unique filename
-        original_filename = secure_filename(file.filename)
-        name, ext = os.path.splitext(original_filename)
-        unique_filename = f"{uuid.uuid4().hex}{ext}"
-        
-        # Ensure assets directory exists
-        assets_path = os.path.join(current_app.root_path, 'static', 'assets')
-        os.makedirs(assets_path, exist_ok=True)
-        
-        # Save file
-        file_path = os.path.join(assets_path, unique_filename)
-        file.save(file_path)
-        
-        # Create title
-        if title_prefix:
-            title = f"{title_prefix} - {name}"
-        else:
-            title = name.replace('_', ' ').replace('-', ' ').title()
-        
-        # Create database record
-        new_image = PortfolioImage(
-            filename=unique_filename,
-            title=title,
-            description=f"Uploaded: {original_filename}",
-            is_active=True
-        )
-        
-        db.session.add(new_image)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'File uploaded successfully',
-            'filename': unique_filename,
-            'title': title,
-            'original_filename': original_filename
-        })
-        
-    except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-# API Routes for backup functionality
-@admin_bp.route('/api/admin/backup/local', methods=['POST'])
-def api_local_backup():
-    """API endpoint to create local backup with custom filename"""
-    try:
-        # Get custom filename from request
-        data = request.get_json() or {}
-        custom_filename = data.get('filename', '').strip()
-        
-        success, result = create_local_backup(custom_filename)
-        
-        if success:
-            # Store the backup file path for download
-            backup_files[result['filename']] = result['path']
-            
-            return jsonify({
-                'filename': result['filename'],
-                'size': result['size'],
-                'timestamp': result['timestamp'],
-                'download_url': f"/api/admin/backup/download/{result['filename']}"
-            })
-        else:
-            return jsonify({
-                'error': True,
-                'message': result
-            }), 500
-            
-    except Exception as e:
-        return jsonify({
-            'error': True,
-            'message': f"Local backup failed: {str(e)}"
-        }), 500
-
-@admin_bp.route('/api/admin/backup/download/<filename>')
-def api_download_backup(filename):
-    """API endpoint to download backup file"""
-    try:
-        if filename not in backup_files:
-            return jsonify({'error': 'Backup file not found'}), 404
-        
-        file_path = backup_files[filename]
-        
-        if not os.path.exists(file_path):
-            return jsonify({'error': 'Backup file no longer exists'}), 404
-        
-        return send_file(
-            file_path,
-            as_attachment=True,
-            download_name=filename,
-            mimetype='application/gzip'
-        )
-        
-    except Exception as e:
-        return jsonify({
-            'error': True,
-            'message': f"Download failed: {str(e)}"
-        }), 500
-
-# API Routes for category management
 @admin_bp.route('/api/admin/categories/create-defaults', methods=['POST'])
-def api_create_default_categories():
+def create_default_categories():
     """Create default photography categories"""
     try:
         from models.database import db, Category
         
         default_categories = [
-            {'name': 'Portraits', 'description': 'Portrait photography including headshots and people'},
-            {'name': 'Landscapes', 'description': 'Natural landscapes and scenic photography'},
-            {'name': 'Events', 'description': 'Event photography including weddings and parties'},
+            {'name': 'Portraits', 'description': 'Portrait photography'},
+            {'name': 'Landscapes', 'description': 'Landscape and nature photography'},
+            {'name': 'Events', 'description': 'Event and celebration photography'},
             {'name': 'Commercial', 'description': 'Commercial and business photography'},
-            {'name': 'Street Photography', 'description': 'Candid street photography and urban scenes'},
+            {'name': 'Street Photography', 'description': 'Street and urban photography'},
             {'name': 'Nature', 'description': 'Wildlife and nature photography'}
         ]
         
@@ -1460,17 +1625,15 @@ def api_create_default_categories():
         db.session.commit()
         
         return jsonify({
-            'message': f'Successfully created {created_count} default categories',
+            'success': True,
             'created_count': created_count
         })
         
     except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/admin/categories/create', methods=['POST'])
-def api_create_category():
+def create_category():
     """Create a new category"""
     try:
         from models.database import db, Category
@@ -1485,7 +1648,7 @@ def api_create_category():
         # Check if category already exists
         existing = Category.query.filter_by(name=name).first()
         if existing:
-            return jsonify({'error': f'Category "{name}" already exists'}), 400
+            return jsonify({'error': 'Category already exists'}), 400
         
         new_category = Category(
             name=name,
@@ -1497,267 +1660,53 @@ def api_create_category():
         db.session.commit()
         
         return jsonify({
-            'id': new_category.id,
+            'success': True,
             'name': new_category.name,
-            'description': new_category.description,
-            'is_active': new_category.is_active
+            'id': new_category.id
         })
         
     except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/admin/categories/<int:category_id>/toggle', methods=['POST'])
-def api_toggle_category(category_id):
+def toggle_category(category_id):
     """Toggle category active status"""
     try:
         from models.database import db, Category
         
-        category = Category.query.get_or_404(category_id)
         data = request.get_json()
         is_active = data.get('is_active', True)
         
+        category = Category.query.get_or_404(category_id)
         category.is_active = is_active
+        
         db.session.commit()
         
         return jsonify({
-            'id': category.id,
+            'success': True,
             'name': category.name,
             'is_active': category.is_active
         })
         
     except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/admin/categories/<int:category_id>/delete', methods=['DELETE'])
-def api_delete_category(category_id):
+def delete_category(category_id):
     """Delete a category"""
     try:
         from models.database import db, Category
         
         category = Category.query.get_or_404(category_id)
-        category_name = category.name
+        name = category.name
         
         db.session.delete(category)
         db.session.commit()
         
         return jsonify({
-            'message': f'Category "{category_name}" deleted successfully'
+            'success': True,
+            'name': name
         })
         
     except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-# API endpoint to handle adding orphaned images
-@admin_bp.route('/api/admin/portfolio/add-orphaned', methods=['POST'])
-def add_orphaned_images():
-    """API endpoint to add orphaned images to database"""
-    try:
-        from models.database import db, PortfolioImage
-        
-        assets_path = os.path.join(current_app.root_path, 'static', 'assets')
-        
-        if not os.path.exists(assets_path):
-            return jsonify({'error': 'Assets folder not found'}), 404
-        
-        # Get all image files from disk
-        disk_files = [f for f in os.listdir(assets_path) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))]
-        
-        # Get filenames already in database
-        db_filenames = {img.filename for img in PortfolioImage.query.all()}
-        
-        # Find orphaned files
-        orphaned_files = [f for f in disk_files if f not in db_filenames]
-        
-        if not orphaned_files:
-            return jsonify({'message': 'No orphaned images found', 'added_count': 0})
-        
-        # Add orphaned images to database
-        added_count = 0
-        for filename in orphaned_files:
-            # Create a basic title from filename
-            title = filename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()
-            
-            new_image = PortfolioImage(
-                filename=filename,
-                title=title,
-                description=f"Imported from {filename}",
-                is_active=True
-            )
-            
-            db.session.add(new_image)
-            added_count += 1
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': f'Successfully added {added_count} images to database',
-            'added_count': added_count,
-            'filenames': orphaned_files
-        })
-        
-    except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-# New API endpoints for enhanced portfolio management
-@admin_bp.route('/api/admin/portfolio/image-categories', methods=['GET'])
-def get_image_categories():
-    """Get categories for all images"""
-    try:
-        from models.database import db, PortfolioImage, Category
-        
-        # For now, return empty categories since we don't have many-to-many relationship yet
-        # This will be updated when we implement the relationship
-        images = PortfolioImage.query.all()
-        result = {}
-        
-        for image in images:
-            result[str(image.id)] = []  # Empty categories for now
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@admin_bp.route('/api/admin/portfolio/images/<int:image_id>/categories', methods=['POST'])
-def update_image_categories(image_id):
-    """Update categories for a specific image"""
-    try:
-        from models.database import db, PortfolioImage, Category
-        
-        image = PortfolioImage.query.get_or_404(image_id)
-        data = request.get_json()
-        category_ids = data.get('category_ids', [])
-        
-        # For now, just return success since we don't have many-to-many relationship yet
-        # This will be updated when we implement the relationship
-        
-        return jsonify({
-            'message': 'Categories updated successfully',
-            'title': image.title,
-            'category_ids': category_ids
-        })
-        
-    except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@admin_bp.route('/api/admin/portfolio/bulk-add-category', methods=['POST'])
-def bulk_add_category():
-    """Add category to multiple images"""
-    try:
-        from models.database import db, PortfolioImage, Category
-        
-        data = request.get_json()
-        image_ids = data.get('image_ids', [])
-        category_id = data.get('category_id')
-        
-        if not image_ids or not category_id:
-            return jsonify({'error': 'Image IDs and category ID are required'}), 400
-        
-        # For now, just return success since we don't have many-to-many relationship yet
-        # This will be updated when we implement the relationship
-        
-        return jsonify({
-            'message': f'Category added to {len(image_ids)} images',
-            'updated_count': len(image_ids)
-        })
-        
-    except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@admin_bp.route('/api/admin/portfolio/bulk-remove-category', methods=['POST'])
-def bulk_remove_category():
-    """Remove category from multiple images"""
-    try:
-        from models.database import db, PortfolioImage, Category
-        
-        data = request.get_json()
-        image_ids = data.get('image_ids', [])
-        category_id = data.get('category_id')
-        
-        if not image_ids or not category_id:
-            return jsonify({'error': 'Image IDs and category ID are required'}), 400
-        
-        # For now, just return success since we don't have many-to-many relationship yet
-        # This will be updated when we implement the relationship
-        
-        return jsonify({
-            'message': f'Category removed from {len(image_ids)} images',
-            'updated_count': len(image_ids)
-        })
-        
-    except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@admin_bp.route('/api/admin/portfolio/images/<int:image_id>/edit', methods=['POST'])
-def edit_image_details(image_id):
-    """Edit image title and description"""
-    try:
-        from models.database import db, PortfolioImage
-        
-        image = PortfolioImage.query.get_or_404(image_id)
-        data = request.get_json()
-        
-        title = data.get('title', '').strip()
-        description = data.get('description', '').strip()
-        
-        image.title = title if title else None
-        image.description = description if description else None
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Image details updated successfully',
-            'title': image.title,
-            'description': image.description
-        })
-        
-    except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@admin_bp.route('/api/admin/portfolio/images/<int:image_id>/delete', methods=['DELETE'])
-def delete_image(image_id):
-    """Delete an image from portfolio"""
-    try:
-        from models.database import db, PortfolioImage
-        
-        image = PortfolioImage.query.get_or_404(image_id)
-        image_title = image.title
-        filename = image.filename
-        
-        # Delete database record
-        db.session.delete(image)
-        db.session.commit()
-        
-        # Optionally delete file from disk
-        try:
-            assets_path = os.path.join(current_app.root_path, 'static', 'assets')
-            file_path = os.path.join(assets_path, filename)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        except Exception as file_error:
-            print(f"Warning: Could not delete file {filename}: {file_error}")
-        
-        return jsonify({
-            'message': f'Image "{image_title}" deleted successfully'
-        })
-        
-    except Exception as e:
-        if 'db' in locals():
-            db.session.rollback()
         return jsonify({'error': str(e)}), 500
