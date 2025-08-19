@@ -58,7 +58,7 @@ class PortfolioImage(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
             'categories': [cat.to_dict() for cat in self.categories],
-            'image_url': f'/assets/{self.filename}'
+            'image_url': f'/static/assets/{self.filename}'
         }
 
 class Category(db.Model):
