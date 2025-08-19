@@ -77,10 +77,11 @@ def admin_dashboard():
     </head>
     <body>
         <h1>Mind's Eye Photography - Admin</h1>
-        <p>Complete working admin system</p>
+        <p>Complete working admin system with categories</p>
         <div class="nav-links">
             <a href="/admin/backup">Backup System</a>
             <a href="/admin/portfolio">Portfolio Management</a>
+            <a href="/admin/categories">Category Management</a>
             <a href="/api/portfolio">View API</a>
         </div>
     </body>
@@ -177,6 +178,274 @@ def backup_management():
     </body>
     </html>
     """)
+
+@admin_bp.route('/admin/categories')
+def category_management():
+    try:
+        from models.database import db, Category
+        
+        # Get all categories
+        categories = Category.query.order_by(Category.name).all()
+        total_categories = len(categories)
+        active_categories = len([c for c in categories if c.is_active])
+        
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Category Management</title>
+            <style>
+                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
+                h1 { color: #ff6b35; }
+                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
+                .back-btn:hover { background: #666; }
+                .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
+                .stat-box { background: #2a2a2a; padding: 20px; border-radius: 8px; text-align: center; border-left: 5px solid #ff6b35; }
+                .stat-box h3 { color: #ff6b35; font-size: 2em; margin: 0; }
+                .stat-box p { color: #ccc; margin: 5px 0 0 0; }
+                .section { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
+                .section h3 { color: #ff6b35; margin-bottom: 15px; }
+                .btn { padding: 12px 24px; margin: 5px; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer; }
+                .btn:hover { background: #e55a2b; }
+                .btn.success { background: #28a745; }
+                .btn.success:hover { background: #218838; }
+                .btn.secondary { background: #6c757d; }
+                .btn.secondary:hover { background: #5a6268; }
+                .btn.danger { background: #dc3545; }
+                .btn.danger:hover { background: #c82333; }
+                .status { padding: 15px; margin: 15px 0; border-radius: 5px; }
+                .status.success { background: #28a745; }
+                .status.error { background: #dc3545; }
+                .status.info { background: #17a2b8; }
+                .form-group { margin: 15px 0; }
+                .form-group label { display: block; margin-bottom: 5px; color: #ff6b35; font-weight: bold; }
+                .form-input { padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; width: 100%; max-width: 400px; }
+                .form-input::placeholder { color: #aaa; }
+                .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 20px; }
+                .category-item { background: #333; padding: 15px; border-radius: 8px; }
+                .category-item h4 { color: #ff6b35; margin: 0 0 10px 0; }
+                .category-item p { color: #ccc; margin: 5px 0; font-size: 0.9em; }
+                .category-actions { margin-top: 10px; }
+                .category-actions button { padding: 6px 12px; margin: 2px; font-size: 0.8em; }
+            </style>
+        </head>
+        <body>
+            <a href="/admin" class="back-btn">← Back to Admin</a>
+            <h1>Category Management</h1>
+            <p>Organize your photography portfolio into categories</p>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <h3>{{ total_categories }}</h3>
+                    <p>Total Categories</p>
+                </div>
+                <div class="stat-box">
+                    <h3>{{ active_categories }}</h3>
+                    <p>Active Categories</p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>🏷️ Create Default Categories</h3>
+                <p>Create standard photography categories to organize your portfolio</p>
+                <button class="btn success" onclick="createDefaultCategories()">
+                    Create Default Photography Categories
+                </button>
+                <p style="color: #ccc; font-size: 0.9em; margin-top: 10px;">
+                    Creates: Portraits, Landscapes, Events, Commercial, Street Photography, Nature
+                </p>
+            </div>
+            
+            <div class="section">
+                <h3>➕ Add New Category</h3>
+                <div class="form-group">
+                    <label for="categoryName">Category Name:</label>
+                    <input type="text" id="categoryName" class="form-input" placeholder="e.g., Wedding Photography">
+                </div>
+                <div class="form-group">
+                    <label for="categoryDescription">Description (optional):</label>
+                    <input type="text" id="categoryDescription" class="form-input" placeholder="Brief description of this category">
+                </div>
+                <button class="btn" onclick="createCategory()">Add Category</button>
+            </div>
+            
+            {% if categories %}
+            <div class="section">
+                <h3>📂 Existing Categories</h3>
+                <div class="category-grid">
+                    {% for category in categories %}
+                    <div class="category-item">
+                        <h4>{{ category.name }}</h4>
+                        <p><strong>Description:</strong> {{ category.description or 'No description' }}</p>
+                        <p><strong>Status:</strong> 
+                            <span style="color: {{ '#28a745' if category.is_active else '#dc3545' }};">
+                                {{ 'Active' if category.is_active else 'Inactive' }}
+                            </span>
+                        </p>
+                        <p><strong>Created:</strong> {{ category.created_at.strftime('%Y-%m-%d') if category.created_at else 'Unknown' }}</p>
+                        <div class="category-actions">
+                            {% if category.is_active %}
+                            <button class="btn secondary" onclick="toggleCategory({{ category.id }}, false)">Deactivate</button>
+                            {% else %}
+                            <button class="btn success" onclick="toggleCategory({{ category.id }}, true)">Activate</button>
+                            {% endif %}
+                            <button class="btn danger" onclick="deleteCategory({{ category.id }}, '{{ category.name }}')">Delete</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div id="status"></div>
+            
+            <script>
+            async function createDefaultCategories() {
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status info">Creating default categories...</div>';
+                
+                try {
+                    const response = await fetch('/api/admin/categories/create-defaults', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Success! Created ${result.created_count} default categories.
+                        </div>`;
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            
+            async function createCategory() {
+                const statusDiv = document.getElementById('status');
+                const name = document.getElementById('categoryName').value.trim();
+                const description = document.getElementById('categoryDescription').value.trim();
+                
+                if (!name) {
+                    statusDiv.innerHTML = '<div class="status error">❌ Category name is required</div>';
+                    return;
+                }
+                
+                statusDiv.innerHTML = '<div class="status info">Creating category...</div>';
+                
+                try {
+                    const response = await fetch('/api/admin/categories/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, description })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Category "${result.name}" created successfully!
+                        </div>`;
+                        document.getElementById('categoryName').value = '';
+                        document.getElementById('categoryDescription').value = '';
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            
+            async function toggleCategory(categoryId, activate) {
+                const statusDiv = document.getElementById('status');
+                const action = activate ? 'Activating' : 'Deactivating';
+                statusDiv.innerHTML = `<div class="status info">${action} category...</div>`;
+                
+                try {
+                    const response = await fetch(`/api/admin/categories/${categoryId}/toggle`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ is_active: activate })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Category "${result.name}" ${activate ? 'activated' : 'deactivated'} successfully!
+                        </div>`;
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            
+            async function deleteCategory(categoryId, categoryName) {
+                if (!confirm(`Are you sure you want to delete the category "${categoryName}"? This action cannot be undone.`)) {
+                    return;
+                }
+                
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status info">Deleting category...</div>';
+                
+                try {
+                    const response = await fetch(`/api/admin/categories/${categoryId}/delete`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Category "${categoryName}" deleted successfully!
+                        </div>`;
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            </script>
+        </body>
+        </html>
+        """, 
+        categories=categories,
+        total_categories=total_categories,
+        active_categories=active_categories)
+        
+    except Exception as e:
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Category Management</title>
+            <style>
+                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
+                h1 { color: #ff6b35; }
+                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
+                .error { background: #dc3545; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            </style>
+        </head>
+        <body>
+            <a href="/admin" class="back-btn">← Back to Admin</a>
+            <h1>Category Management</h1>
+            <div class="error">
+                <strong>Error loading categories:</strong> {{ error }}
+            </div>
+        </body>
+        </html>
+        """, error=str(e))
 
 @admin_bp.route('/admin/portfolio')
 def portfolio_management():
@@ -421,6 +690,131 @@ def api_download_backup(filename):
             'error': True,
             'message': f"Download failed: {str(e)}"
         }), 500
+
+# API Routes for category management
+@admin_bp.route('/api/admin/categories/create-defaults', methods=['POST'])
+def api_create_default_categories():
+    """Create default photography categories"""
+    try:
+        from models.database import db, Category
+        
+        default_categories = [
+            {'name': 'Portraits', 'description': 'Portrait photography including headshots and people'},
+            {'name': 'Landscapes', 'description': 'Natural landscapes and scenic photography'},
+            {'name': 'Events', 'description': 'Event photography including weddings and parties'},
+            {'name': 'Commercial', 'description': 'Commercial and business photography'},
+            {'name': 'Street Photography', 'description': 'Candid street photography and urban scenes'},
+            {'name': 'Nature', 'description': 'Wildlife and nature photography'}
+        ]
+        
+        created_count = 0
+        for cat_data in default_categories:
+            # Check if category already exists
+            existing = Category.query.filter_by(name=cat_data['name']).first()
+            if not existing:
+                new_category = Category(
+                    name=cat_data['name'],
+                    description=cat_data['description'],
+                    is_active=True
+                )
+                db.session.add(new_category)
+                created_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Successfully created {created_count} default categories',
+            'created_count': created_count
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/categories/create', methods=['POST'])
+def api_create_category():
+    """Create a new category"""
+    try:
+        from models.database import db, Category
+        
+        data = request.get_json()
+        name = data.get('name', '').strip()
+        description = data.get('description', '').strip()
+        
+        if not name:
+            return jsonify({'error': 'Category name is required'}), 400
+        
+        # Check if category already exists
+        existing = Category.query.filter_by(name=name).first()
+        if existing:
+            return jsonify({'error': f'Category "{name}" already exists'}), 400
+        
+        new_category = Category(
+            name=name,
+            description=description if description else None,
+            is_active=True
+        )
+        
+        db.session.add(new_category)
+        db.session.commit()
+        
+        return jsonify({
+            'id': new_category.id,
+            'name': new_category.name,
+            'description': new_category.description,
+            'is_active': new_category.is_active
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/categories/<int:category_id>/toggle', methods=['POST'])
+def api_toggle_category(category_id):
+    """Toggle category active status"""
+    try:
+        from models.database import db, Category
+        
+        category = Category.query.get_or_404(category_id)
+        data = request.get_json()
+        is_active = data.get('is_active', True)
+        
+        category.is_active = is_active
+        db.session.commit()
+        
+        return jsonify({
+            'id': category.id,
+            'name': category.name,
+            'is_active': category.is_active
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/categories/<int:category_id>/delete', methods=['DELETE'])
+def api_delete_category(category_id):
+    """Delete a category"""
+    try:
+        from models.database import db, Category
+        
+        category = Category.query.get_or_404(category_id)
+        category_name = category.name
+        
+        db.session.delete(category)
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Category "{category_name}" deleted successfully'
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 # API endpoint to handle adding orphaned images
 @admin_bp.route('/api/admin/portfolio/add-orphaned', methods=['POST'])
