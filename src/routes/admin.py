@@ -5,8 +5,15 @@ import json
 import tarfile
 import tempfile
 from datetime import datetime
+import uuid
 
 admin_bp = Blueprint('admin', __name__)
+
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def create_local_backup(custom_filename=None):
     """Create comprehensive local backup as tar.gz file with custom filename"""
@@ -29,7 +36,7 @@ def create_local_backup(custom_filename=None):
         # Create tar.gz file
         with tarfile.open(backup_path, 'w:gz') as tar:
             # Add database
-            db_path = 'app.db'
+            db_path = '/mnt/data/app.db'
             if os.path.exists(db_path):
                 tar.add(db_path, arcname='database/app.db')
                 print(f"Added database: {db_path}")
@@ -70,6 +77,7 @@ def admin_dashboard():
         <style>
             body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
             h1 { color: #ff6b35; }
+            .subtitle { color: #ccc; margin-bottom: 30px; }
             .nav-links { margin: 20px 0; }
             .nav-links a { display: inline-block; margin: 10px; padding: 10px 20px; background: #ff6b35; color: white; text-decoration: none; border-radius: 5px; }
             .nav-links a:hover { background: #e55a2b; }
@@ -77,16 +85,279 @@ def admin_dashboard():
     </head>
     <body>
         <h1>Mind's Eye Photography - Admin</h1>
-        <p>Complete working admin system with categories</p>
+        <p class="subtitle">Complete admin system with file upload and persistent storage</p>
         <div class="nav-links">
             <a href="/admin/backup">Backup System</a>
             <a href="/admin/portfolio">Portfolio Management</a>
+            <a href="/admin/upload">Upload Images</a>
             <a href="/admin/categories">Category Management</a>
             <a href="/api/portfolio">View API</a>
         </div>
     </body>
     </html>
     """)
+
+@admin_bp.route('/admin/upload')
+def upload_interface():
+    try:
+        from models.database import db, Category
+        
+        # Get all active categories for selection
+        categories = Category.query.filter_by(is_active=True).order_by(Category.name).all()
+        
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Upload Images</title>
+            <style>
+                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
+                h1 { color: #ff6b35; }
+                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
+                .back-btn:hover { background: #666; }
+                .upload-section { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
+                .upload-section h3 { color: #ff6b35; margin-bottom: 15px; }
+                .upload-area { border: 2px dashed #555; padding: 40px; text-align: center; border-radius: 10px; margin: 20px 0; transition: border-color 0.3s; }
+                .upload-area.dragover { border-color: #ff6b35; background: rgba(255, 107, 53, 0.1); }
+                .upload-area input[type="file"] { display: none; }
+                .upload-btn { background: #ff6b35; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; margin: 10px; }
+                .upload-btn:hover { background: #e55a2b; }
+                .form-group { margin: 15px 0; }
+                .form-group label { display: block; margin-bottom: 5px; color: #ff6b35; font-weight: bold; }
+                .form-input { padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; width: 100%; max-width: 400px; }
+                .form-select { padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; width: 100%; max-width: 400px; }
+                .status { padding: 15px; margin: 15px 0; border-radius: 5px; }
+                .status.success { background: #28a745; }
+                .status.error { background: #dc3545; }
+                .status.info { background: #17a2b8; }
+                .file-list { margin: 20px 0; }
+                .file-item { background: #333; padding: 10px; margin: 5px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+                .file-info { flex-grow: 1; }
+                .file-actions { margin-left: 10px; }
+                .remove-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+                .remove-btn:hover { background: #c82333; }
+                .progress-bar { width: 100%; height: 20px; background: #333; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+                .progress-fill { height: 100%; background: #28a745; width: 0%; transition: width 0.3s; }
+                .upload-options { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+            </style>
+        </head>
+        <body>
+            <a href="/admin" class="back-btn">← Back to Admin</a>
+            <h1>Upload Images</h1>
+            <p>Upload multiple images to your portfolio with automatic database integration</p>
+            
+            <div class="upload-section">
+                <h3>📁 Select Images to Upload</h3>
+                <div class="upload-area" id="uploadArea">
+                    <p>Drag & drop images here or click to select files</p>
+                    <input type="file" id="fileInput" multiple accept="image/*">
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        Choose Files
+                    </button>
+                </div>
+                
+                <div class="upload-options">
+                    <div class="form-group">
+                        <label for="defaultTitle">Default Title Prefix (optional):</label>
+                        <input type="text" id="defaultTitle" class="form-input" placeholder="e.g., 'Portfolio 2025'">
+                        <small style="color: #aaa;">Will be combined with filename</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="defaultCategory">Default Category (optional):</label>
+                        <select id="defaultCategory" class="form-select">
+                            <option value="">No default category</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="fileList" class="file-list"></div>
+                
+                <div id="uploadProgress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="progressText">Uploading...</p>
+                </div>
+                
+                <button class="upload-btn" id="uploadButton" onclick="uploadFiles()" style="display: none;">
+                    Upload Selected Images
+                </button>
+            </div>
+            
+            <div id="status"></div>
+            
+            <script>
+            let selectedFiles = [];
+            
+            // Drag and drop functionality
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files);
+                addFiles(files);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                addFiles(files);
+            });
+            
+            function addFiles(files) {
+                const validFiles = files.filter(file => {
+                    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                    return validTypes.includes(file.type);
+                });
+                
+                selectedFiles = [...selectedFiles, ...validFiles];
+                updateFileList();
+                
+                if (validFiles.length !== files.length) {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="status error">Some files were skipped. Only image files are allowed.</div>';
+                }
+            }
+            
+            function removeFile(index) {
+                selectedFiles.splice(index, 1);
+                updateFileList();
+            }
+            
+            function updateFileList() {
+                const fileList = document.getElementById('fileList');
+                const uploadButton = document.getElementById('uploadButton');
+                
+                if (selectedFiles.length === 0) {
+                    fileList.innerHTML = '';
+                    uploadButton.style.display = 'none';
+                    return;
+                }
+                
+                uploadButton.style.display = 'block';
+                
+                fileList.innerHTML = selectedFiles.map((file, index) => `
+                    <div class="file-item">
+                        <div class="file-info">
+                            <strong>${file.name}</strong> (${(file.size / 1024 / 1024).toFixed(2)} MB)
+                        </div>
+                        <div class="file-actions">
+                            <button class="remove-btn" onclick="removeFile(${index})">Remove</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            async function uploadFiles() {
+                if (selectedFiles.length === 0) return;
+                
+                const statusDiv = document.getElementById('status');
+                const progressDiv = document.getElementById('uploadProgress');
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                const uploadButton = document.getElementById('uploadButton');
+                
+                uploadButton.disabled = true;
+                progressDiv.style.display = 'block';
+                statusDiv.innerHTML = '';
+                
+                const defaultTitle = document.getElementById('defaultTitle').value.trim();
+                const defaultCategory = document.getElementById('defaultCategory').value;
+                
+                let uploadedCount = 0;
+                let failedCount = 0;
+                
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const file = selectedFiles[i];
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('title_prefix', defaultTitle);
+                    formData.append('category_id', defaultCategory);
+                    
+                    try {
+                        progressText.textContent = `Uploading ${file.name} (${i + 1}/${selectedFiles.length})...`;
+                        progressFill.style.width = `${(i / selectedFiles.length) * 100}%`;
+                        
+                        const response = await fetch('/api/admin/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        if (response.ok) {
+                            uploadedCount++;
+                        } else {
+                            failedCount++;
+                            console.error(`Failed to upload ${file.name}`);
+                        }
+                    } catch (error) {
+                        failedCount++;
+                        console.error(`Error uploading ${file.name}:`, error);
+                    }
+                }
+                
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Upload complete!';
+                
+                statusDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ Upload complete!<br>
+                        <strong>Uploaded:</strong> ${uploadedCount} images<br>
+                        ${failedCount > 0 ? `<strong>Failed:</strong> ${failedCount} images<br>` : ''}
+                        <strong>Images are now available in your portfolio!</strong>
+                    </div>
+                `;
+                
+                // Reset form
+                selectedFiles = [];
+                updateFileList();
+                document.getElementById('defaultTitle').value = '';
+                document.getElementById('defaultCategory').value = '';
+                uploadButton.disabled = false;
+                
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                }, 3000);
+            }
+            </script>
+        </body>
+        </html>
+        """, categories=categories)
+        
+    except Exception as e:
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Upload Images</title>
+            <style>
+                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
+                h1 { color: #ff6b35; }
+                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
+                .error { background: #dc3545; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            </style>
+        </head>
+        <body>
+            <a href="/admin" class="back-btn">← Back to Admin</a>
+            <h1>Upload Images</h1>
+            <div class="error">
+                <strong>Error loading upload interface:</strong> {{ error }}
+            </div>
+        </body>
+        </html>
+        """, error=str(e))
 
 @admin_bp.route('/admin/backup')
 def backup_management():
@@ -632,6 +903,69 @@ def portfolio_management():
         </body>
         </html>
         """, error=str(e))
+
+# API Routes for file upload functionality
+@admin_bp.route('/api/admin/upload', methods=['POST'])
+def api_upload_file():
+    """API endpoint to handle file uploads"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        # Get form data
+        title_prefix = request.form.get('title_prefix', '').strip()
+        category_id = request.form.get('category_id', '').strip()
+        
+        # Generate unique filename
+        original_filename = secure_filename(file.filename)
+        name, ext = os.path.splitext(original_filename)
+        unique_filename = f"{uuid.uuid4().hex}{ext}"
+        
+        # Ensure assets directory exists
+        assets_path = os.path.join(current_app.root_path, 'static', 'assets')
+        os.makedirs(assets_path, exist_ok=True)
+        
+        # Save file
+        file_path = os.path.join(assets_path, unique_filename)
+        file.save(file_path)
+        
+        # Create title
+        if title_prefix:
+            title = f"{title_prefix} - {name}"
+        else:
+            title = name.replace('_', ' ').replace('-', ' ').title()
+        
+        # Create database record
+        new_image = PortfolioImage(
+            filename=unique_filename,
+            title=title,
+            description=f"Uploaded: {original_filename}",
+            is_active=True
+        )
+        
+        db.session.add(new_image)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'File uploaded successfully',
+            'filename': unique_filename,
+            'title': title,
+            'original_filename': original_filename
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 # API Routes for backup functionality
 @admin_bp.route('/api/admin/backup/local', methods=['POST'])
