@@ -1137,4 +1137,537 @@ def background_management():
 @admin_bp.route('/admin/contacts')
 def contact_management():
     return render_template_string('<h1>Contact Management</h1><p>Coming soon after backup system is tested!</p><a href="/admin">← Back to Admin</a>')
+# Category Management System
+# Add these routes to your src/routes/admin.py file
+
+@admin_bp.route('/admin/categories')
+def category_management():
+    """Category management interface"""
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Category Management - Mind's Eye Photography</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; }
+            .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #ff6b35; font-size: 2em; margin-bottom: 10px; }
+            .back-btn { display: inline-block; margin-bottom: 20px; padding: 8px 16px; background: #555; color: white; text-decoration: none; border-radius: 4px; }
+            .back-btn:hover { background: #666; }
+            
+            .toolbar { background: #2a2a2a; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+            .btn { padding: 10px 20px; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
+            .btn:hover { background: #e55a2b; }
+            .btn.secondary { background: #555; }
+            .btn.secondary:hover { background: #666; }
+            .btn.danger { background: #dc3545; }
+            .btn.danger:hover { background: #c82333; }
+            .btn.success { background: #28a745; }
+            .btn.success:hover { background: #218838; }
+            
+            .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+            .category-card { background: #2a2a2a; border-radius: 10px; padding: 20px; position: relative; }
+            .category-card.inactive { opacity: 0.6; }
+            .category-name { color: #ff6b35; font-size: 1.3em; font-weight: bold; margin-bottom: 10px; }
+            .category-slug { color: #888; font-size: 0.9em; margin-bottom: 10px; }
+            .category-description { color: #ccc; margin-bottom: 15px; }
+            .category-stats { display: flex; justify-content: space-between; margin-bottom: 15px; }
+            .stat { text-align: center; }
+            .stat-number { color: #ff6b35; font-weight: bold; }
+            .stat-label { color: #888; font-size: 0.8em; }
+            
+            .category-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+            .category-actions .btn { padding: 5px 10px; font-size: 0.9em; }
+            
+            .status { padding: 15px; margin: 15px 0; border-radius: 5px; }
+            .status.success { background: #28a745; }
+            .status.error { background: #dc3545; }
+            .status.info { background: #17a2b8; }
+            
+            .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
+            .modal-content { background: #2a2a2a; margin: 5% auto; padding: 20px; width: 90%; max-width: 500px; border-radius: 10px; }
+            .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+            .modal-title { color: #ff6b35; font-size: 1.5em; }
+            .close { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+            .close:hover { color: #fff; }
+            
+            .form-group { margin-bottom: 15px; }
+            .form-group label { display: block; margin-bottom: 5px; color: #ff6b35; }
+            .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; }
+            .form-group textarea { height: 80px; resize: vertical; }
+            
+            .drag-handle { cursor: move; color: #888; margin-right: 10px; }
+            .sortable { list-style: none; }
+            .sortable li { background: #2a2a2a; margin: 5px 0; padding: 10px; border-radius: 5px; display: flex; align-items: center; }
+            .sortable li:hover { background: #333; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <a href="/admin" class="back-btn">← Back to Admin</a>
+            <div class="header">
+                <h1>Category Management</h1>
+                <p>Organize your portfolio categories</p>
+            </div>
+            
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <button class="btn success" onclick="openAddCategory()">➕ Add Category</button>
+                <button class="btn" onclick="refreshCategories()">🔄 Refresh</button>
+                <button class="btn secondary" onclick="reorderCategories()">🔄 Reorder</button>
+                <button class="btn secondary" onclick="exportCategories()">📤 Export</button>
+                <button class="btn secondary" onclick="importCategories()">📥 Import</button>
+            </div>
+            
+            <!-- Status Messages -->
+            <div id="status"></div>
+            
+            <!-- Category Grid -->
+            <div class="category-grid" id="categoryGrid">
+                <!-- Categories will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Add/Edit Category Modal -->
+        <div class="modal" id="categoryModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modalTitle">Add Category</h2>
+                    <span class="close" onclick="closeCategoryModal()">&times;</span>
+                </div>
+                <form id="categoryForm">
+                    <input type="hidden" id="categoryId">
+                    <div class="form-group">
+                        <label>Category Name *</label>
+                        <input type="text" id="categoryName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Slug (URL-friendly name)</label>
+                        <input type="text" id="categorySlug">
+                        <small style="color: #888;">Leave blank to auto-generate from name</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="categoryDescription"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Sort Order</label>
+                        <input type="number" id="categorySortOrder" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="categoryActive" checked> Active
+                        </label>
+                    </div>
+                    <button type="submit" class="btn success">Save Category</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Reorder Modal -->
+        <div class="modal" id="reorderModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Reorder Categories</h2>
+                    <span class="close" onclick="closeReorderModal()">&times;</span>
+                </div>
+                <p>Drag categories to reorder them:</p>
+                <ul class="sortable" id="sortableList">
+                    <!-- Sortable categories will be loaded here -->
+                </ul>
+                <button class="btn success" onclick="saveCategoryOrder()">Save Order</button>
+            </div>
+        </div>
+        
+        <script>
+        let categories = [];
+        let editingCategoryId = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshCategories();
+            setupFormHandlers();
+        });
+        
+        // Load categories
+        async function refreshCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                const data = await response.json();
+                categories = data || [];
+                renderCategories();
+            } catch (error) {
+                console.error('Error loading categories:', error);
+                showStatus('Error loading categories', 'error');
+            }
+        }
+        
+        // Render categories
+        function renderCategories() {
+            const grid = document.getElementById('categoryGrid');
+            grid.innerHTML = '';
+            
+            categories.forEach(category => {
+                const card = document.createElement('div');
+                card.className = `category-card ${!category.is_active ? 'inactive' : ''}`;
+                card.innerHTML = `
+                    <div class="category-name">${category.name}</div>
+                    <div class="category-slug">/${category.slug}</div>
+                    <div class="category-description">${category.description || 'No description'}</div>
+                    <div class="category-stats">
+                        <div class="stat">
+                            <div class="stat-number">${category.image_count || 0}</div>
+                            <div class="stat-label">Images</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">${category.sort_order}</div>
+                            <div class="stat-label">Order</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">${category.is_active ? 'Active' : 'Inactive'}</div>
+                            <div class="stat-label">Status</div>
+                        </div>
+                    </div>
+                    <div class="category-actions">
+                        <button class="btn" onclick="editCategory(${category.id})">✏️ Edit</button>
+                        <button class="btn ${category.is_active ? 'secondary' : 'success'}" 
+                                onclick="toggleCategory(${category.id})">
+                            ${category.is_active ? '⏸️ Deactivate' : '▶️ Activate'}
+                        </button>
+                        <button class="btn danger" onclick="deleteCategory(${category.id})">🗑️ Delete</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+        
+        // Open add category modal
+        function openAddCategory() {
+            editingCategoryId = null;
+            document.getElementById('modalTitle').textContent = 'Add Category';
+            document.getElementById('categoryForm').reset();
+            document.getElementById('categoryModal').style.display = 'block';
+        }
+        
+        // Edit category
+        function editCategory(categoryId) {
+            const category = categories.find(c => c.id === categoryId);
+            if (!category) return;
+            
+            editingCategoryId = categoryId;
+            document.getElementById('modalTitle').textContent = 'Edit Category';
+            document.getElementById('categoryId').value = category.id;
+            document.getElementById('categoryName').value = category.name;
+            document.getElementById('categorySlug').value = category.slug;
+            document.getElementById('categoryDescription').value = category.description || '';
+            document.getElementById('categorySortOrder').value = category.sort_order;
+            document.getElementById('categoryActive').checked = category.is_active;
+            document.getElementById('categoryModal').style.display = 'block';
+        }
+        
+        // Close category modal
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').style.display = 'none';
+            editingCategoryId = null;
+        }
+        
+        // Setup form handlers
+        function setupFormHandlers() {
+            document.getElementById('categoryForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await saveCategory();
+            });
+            
+            // Auto-generate slug from name
+            document.getElementById('categoryName').addEventListener('input', function() {
+                const name = this.value;
+                const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                document.getElementById('categorySlug').value = slug;
+            });
+        }
+        
+        // Save category
+        async function saveCategory() {
+            const formData = {
+                name: document.getElementById('categoryName').value,
+                slug: document.getElementById('categorySlug').value,
+                description: document.getElementById('categoryDescription').value,
+                sort_order: parseInt(document.getElementById('categorySortOrder').value),
+                is_active: document.getElementById('categoryActive').checked
+            };
+            
+            try {
+                const url = editingCategoryId ? 
+                    `/api/admin/categories/${editingCategoryId}` : 
+                    '/api/admin/categories';
+                const method = editingCategoryId ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    showStatus(editingCategoryId ? 'Category updated' : 'Category created', 'success');
+                    closeCategoryModal();
+                    refreshCategories();
+                } else {
+                    showStatus(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving category:', error);
+                showStatus('Error saving category', 'error');
+            }
+        }
+        
+        // Toggle category active status
+        async function toggleCategory(categoryId) {
+            const category = categories.find(c => c.id === categoryId);
+            if (!category) return;
+            
+            try {
+                const response = await fetch(`/api/admin/categories/${categoryId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: !category.is_active })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    showStatus(`Category ${category.is_active ? 'deactivated' : 'activated'}`, 'success');
+                    refreshCategories();
+                } else {
+                    showStatus(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling category:', error);
+                showStatus('Error updating category', 'error');
+            }
+        }
+        
+        // Delete category
+        async function deleteCategory(categoryId) {
+            const category = categories.find(c => c.id === categoryId);
+            if (!category) return;
+            
+            if (!confirm(`Delete category "${category.name}"? This will remove it from all images.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/categories/${categoryId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    showStatus('Category deleted', 'success');
+                    refreshCategories();
+                } else {
+                    showStatus(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting category:', error);
+                showStatus('Error deleting category', 'error');
+            }
+        }
+        
+        // Show status message
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => status.innerHTML = '', 5000);
+        }
+        
+        // Reorder categories
+        function reorderCategories() {
+            const list = document.getElementById('sortableList');
+            list.innerHTML = '';
+            
+            categories.sort((a, b) => a.sort_order - b.sort_order).forEach(category => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="drag-handle">⋮⋮</span>
+                    <span>${category.name}</span>
+                `;
+                li.dataset.categoryId = category.id;
+                list.appendChild(li);
+            });
+            
+            document.getElementById('reorderModal').style.display = 'block';
+        }
+        
+        function closeReorderModal() {
+            document.getElementById('reorderModal').style.display = 'none';
+        }
+        
+        // Save category order
+        async function saveCategoryOrder() {
+            const items = document.querySelectorAll('#sortableList li');
+            const order = Array.from(items).map((item, index) => ({
+                id: parseInt(item.dataset.categoryId),
+                sort_order: index
+            }));
+            
+            try {
+                const response = await fetch('/api/admin/categories/reorder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order: order })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    showStatus('Category order updated', 'success');
+                    closeReorderModal();
+                    refreshCategories();
+                } else {
+                    showStatus(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving order:', error);
+                showStatus('Error saving order', 'error');
+            }
+        }
+        
+        // Export categories
+        function exportCategories() {
+            const dataStr = JSON.stringify(categories, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'categories_export.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+        </script>
+    </body>
+    </html>
+    ''')
+
+# API Routes for Category Management
+
+@admin_bp.route('/api/categories')
+def api_get_categories():
+    """Get all categories"""
+    try:
+        categories = Category.query.order_by(Category.sort_order, Category.name).all()
+        return jsonify([category.to_dict() for category in categories])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/categories', methods=['POST'])
+def api_create_category():
+    """Create a new category"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data.get('name'):
+            return jsonify({'error': 'Category name is required'}), 400
+        
+        # Generate slug if not provided
+        slug = data.get('slug') or data['name'].lower().replace(' ', '-')
+        slug = ''.join(c for c in slug if c.isalnum() or c == '-')
+        
+        # Check if slug already exists
+        existing = Category.query.filter_by(slug=slug).first()
+        if existing:
+            return jsonify({'error': 'Category with this slug already exists'}), 400
+        
+        category = Category(
+            name=data['name'],
+            slug=slug,
+            description=data.get('description', ''),
+            sort_order=data.get('sort_order', 0),
+            is_active=data.get('is_active', True)
+        )
+        
+        db.session.add(category)
+        db.session.commit()
+        
+        return jsonify(category.to_dict()), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/categories/<int:category_id>', methods=['PUT'])
+def api_update_category(category_id):
+    """Update a category"""
+    try:
+        category = Category.query.get_or_404(category_id)
+        data = request.get_json()
+        
+        # Update fields if provided
+        if 'name' in data:
+            category.name = data['name']
+        if 'slug' in data:
+            # Check if slug is unique (excluding current category)
+            existing = Category.query.filter(Category.slug == data['slug'], Category.id != category_id).first()
+            if existing:
+                return jsonify({'error': 'Category with this slug already exists'}), 400
+            category.slug = data['slug']
+        if 'description' in data:
+            category.description = data['description']
+        if 'sort_order' in data:
+            category.sort_order = data['sort_order']
+        if 'is_active' in data:
+            category.is_active = data['is_active']
+        
+        category.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify(category.to_dict())
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/categories/<int:category_id>', methods=['DELETE'])
+def api_delete_category(category_id):
+    """Delete a category"""
+    try:
+        category = Category.query.get_or_404(category_id)
+        
+        # Remove category from all images
+        for image in category.images:
+            image.categories.remove(category)
+        
+        db.session.delete(category)
+        db.session.commit()
+        
+        return jsonify({'message': 'Category deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/categories/reorder', methods=['POST'])
+def api_reorder_categories():
+    """Reorder categories"""
+    try:
+        data = request.get_json()
+        order = data.get('order', [])
+        
+        for item in order:
+            category = Category.query.get(item['id'])
+            if category:
+                category.sort_order = item['sort_order']
+                category.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({'message': 'Category order updated successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
