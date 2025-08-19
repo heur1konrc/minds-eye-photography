@@ -293,3 +293,9 @@ def generate_unique_filename(original_filename):
     
     file_extension = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else 'jpg'
     return f"{uuid.uuid4()}.{file_extension}"
+
+def init_db(app):
+    """Initializes the database."""
+    with app.app_context():
+        db.create_all()
+
