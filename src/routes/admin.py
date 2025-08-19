@@ -102,6 +102,9 @@ def portfolio_management():
     try:
         from models.database import db, PortfolioImage, Category
         
+        # Get filter parameters
+        category_filter = request.args.get('category', '')
+        
         # Get statistics
         total_images_db = PortfolioImage.query.count()
         active_images_db = PortfolioImage.query.filter_by(is_active=True).count()
@@ -126,8 +129,16 @@ def portfolio_management():
             # Find orphaned files
             orphaned_files = list(disk_files - db_files)
         
-        # Get all portfolio images with proper titles
-        portfolio_images = PortfolioImage.query.order_by(PortfolioImage.id.desc()).all()
+        # Get portfolio images with optional category filter
+        query = PortfolioImage.query
+        
+        if category_filter:
+            # Filter by category
+            category = Category.query.filter_by(name=category_filter).first()
+            if category:
+                query = query.filter(PortfolioImage.categories.contains(category))
+        
+        portfolio_images = query.order_by(PortfolioImage.id.desc()).all()
         
         return render_template_string("""
         <!DOCTYPE html>
@@ -153,6 +164,9 @@ def portfolio_management():
                 .btn.secondary:hover { background: #5a6268; }
                 .btn.danger { background: #dc3545; }
                 .btn.danger:hover { background: #c82333; }
+                .filter-section { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
+                .filter-controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+                .filter-select { padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; min-width: 200px; }
                 .bulk-actions { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
                 .bulk-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
                 .bulk-category-select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
@@ -169,7 +183,8 @@ def portfolio_management():
                 .image-description { color: #ccc; margin-bottom: 15px; font-size: 0.9em; }
                 .current-categories h5 { color: #ff6b35; margin: 10px 0 5px 0; font-size: 0.9em; }
                 .category-badges { margin-bottom: 15px; }
-                .category-badge { background: #ff6b35; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; margin: 2px; display: inline-block; }
+                .category-badge { background: #ff6b35; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; margin: 2px; display: inline-block; cursor: pointer; }
+                .category-badge:hover { background: #e55a2b; }
                 .no-categories { color: #888; font-style: italic; font-size: 0.8em; }
                 .update-categories h5 { color: #ff6b35; margin: 10px 0 5px 0; font-size: 0.9em; }
                 .category-checkboxes { margin-bottom: 15px; }
@@ -216,6 +231,28 @@ def portfolio_management():
                 <div class="stat-box">
                     <h3>{{ orphaned_files|length }}</h3>
                     <p>Orphaned Files</p>
+                </div>
+                <div class="stat-box">
+                    <h3>{{ portfolio_images|length }}</h3>
+                    <p>{{ 'Filtered' if category_filter else 'Displayed' }} Images</p>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h3>🔍 Filter Portfolio</h3>
+                <div class="filter-controls">
+                    <select id="categoryFilter" class="filter-select" onchange="filterByCategory()">
+                        <option value="">Show All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.name }}" {{ 'selected' if category_filter == category.name else '' }}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn secondary" onclick="clearFilter()">Clear Filter</button>
+                    {% if category_filter %}
+                    <span style="color: #ff6b35; font-weight: bold;">Showing: {{ category_filter }}</span>
+                    {% endif %}
                 </div>
             </div>
             
@@ -264,7 +301,7 @@ def portfolio_management():
             </div>
             
             <div class="section">
-                <h3>📸 Current Portfolio ({{ portfolio_images|length }} images)</h3>
+                <h3>📸 {{ 'Filtered Portfolio' if category_filter else 'Current Portfolio' }} ({{ portfolio_images|length }} images)</h3>
                 <div class="portfolio-grid">
                     {% for image in portfolio_images %}
                     <div class="image-card" data-image-id="{{ image.id }}">
@@ -279,7 +316,7 @@ def portfolio_management():
                             
                             <div class="current-categories">
                                 <h5>Current Categories:</h5>
-                                <div class="category-badges">
+                                <div class="category-badges" data-image-id="{{ image.id }}">
                                     <span class="no-categories">Loading...</span>
                                 </div>
                             </div>
@@ -342,6 +379,29 @@ def portfolio_management():
                 updateSelectedCount();
             });
             
+            function filterByCategory() {
+                const categoryFilter = document.getElementById('categoryFilter').value;
+                const url = new URL(window.location);
+                if (categoryFilter) {
+                    url.searchParams.set('category', categoryFilter);
+                } else {
+                    url.searchParams.delete('category');
+                }
+                window.location.href = url.toString();
+            }
+            
+            function clearFilter() {
+                const url = new URL(window.location);
+                url.searchParams.delete('category');
+                window.location.href = url.toString();
+            }
+            
+            function filterByBadgeClick(categoryName) {
+                const url = new URL(window.location);
+                url.searchParams.set('category', categoryName);
+                window.location.href = url.toString();
+            }
+            
             async function loadImageCategories() {
                 try {
                     const response = await fetch('/api/admin/portfolio/image-categories');
@@ -350,20 +410,20 @@ def portfolio_management():
                         
                         // Update category badges for each image
                         Object.keys(data).forEach(imageId => {
-                            const imageCard = document.querySelector(`[data-image-id="${imageId}"]`);
-                            if (imageCard) {
-                                const badgesContainer = imageCard.querySelector('.category-badges');
+                            const badgesContainer = document.querySelector(`[data-image-id="${imageId}"]`);
+                            if (badgesContainer) {
                                 const categories = data[imageId];
                                 
                                 if (categories.length > 0) {
                                     badgesContainer.innerHTML = categories.map(cat => 
-                                        `<span class="category-badge">${cat.name}</span>`
+                                        `<span class="category-badge" onclick="filterByBadgeClick('${cat.name}')">${cat.name}</span>`
                                     ).join('');
                                 } else {
                                     badgesContainer.innerHTML = '<span class="no-categories">No categories assigned</span>';
                                 }
                                 
                                 // Update checkboxes
+                                const imageCard = document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-card');
                                 const checkboxes = imageCard.querySelectorAll('input[name^="category_"]');
                                 checkboxes.forEach(checkbox => {
                                     const categoryId = parseInt(checkbox.value);
@@ -371,9 +431,19 @@ def portfolio_management():
                                 });
                             }
                         });
+                    } else {
+                        console.error('Failed to load image categories:', response.status);
+                        // Show error in all category badge containers
+                        document.querySelectorAll('.category-badges').forEach(container => {
+                            container.innerHTML = '<span class="no-categories">Error loading categories</span>';
+                        });
                     }
                 } catch (error) {
                     console.error('Error loading image categories:', error);
+                    // Show error in all category badge containers
+                    document.querySelectorAll('.category-badges').forEach(container => {
+                        container.innerHTML = '<span class="no-categories">Error loading categories</span>';
+                    });
                 }
             }
             
@@ -411,7 +481,7 @@ def portfolio_management():
             
             async function updateImageCategories(imageId) {
                 const statusDiv = document.getElementById('status');
-                const imageCard = document.querySelector(`[data-image-id="${imageId}"]`);
+                const imageCard = document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-card');
                 const checkboxes = imageCard.querySelectorAll('input[name^="category_"]');
                 
                 const selectedCategories = Array.from(checkboxes)
@@ -435,7 +505,7 @@ def portfolio_management():
                         loadImageCategories(); // Refresh category display
                     } else {
                         const error = await response.json();
-                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
                     }
                 } catch (error) {
                     statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
@@ -478,7 +548,7 @@ def portfolio_management():
                         loadImageCategories(); // Refresh category display
                     } else {
                         const error = await response.json();
-                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
                     }
                 } catch (error) {
                     statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
@@ -521,7 +591,7 @@ def portfolio_management():
                         loadImageCategories(); // Refresh category display
                     } else {
                         const error = await response.json();
-                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
                     }
                 } catch (error) {
                     statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
@@ -562,12 +632,12 @@ def portfolio_management():
                         closeEditModal();
                         
                         // Update the display
-                        const imageCard = document.querySelector(`[data-image-id="${imageId}"]`);
+                        const imageCard = document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-card');
                         imageCard.querySelector('.image-title').textContent = result.title || 'Untitled';
                         imageCard.querySelector('.image-description').textContent = result.description || 'No description';
                     } else {
                         const error = await response.json();
-                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
                     }
                 } catch (error) {
                     statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
@@ -595,12 +665,12 @@ def portfolio_management():
                         </div>`;
                         
                         // Remove the image card from display
-                        const imageCard = document.querySelector(`[data-image-id="${imageId}"]`);
+                        const imageCard = document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-card');
                         imageCard.remove();
                         updateSelectedCount();
                     } else {
                         const error = await response.json();
-                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
                     }
                 } catch (error) {
                     statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
@@ -629,7 +699,7 @@ def portfolio_management():
                         }, 2000);
                     } else {
                         const error = await response.json();
-                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
                     }
                 } catch (error) {
                     statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
@@ -643,12 +713,13 @@ def portfolio_management():
         active_images_db=active_images_db,
         orphaned_files=orphaned_files,
         portfolio_images=portfolio_images,
-        categories=categories)
+        categories=categories,
+        category_filter=category_filter)
         
     except Exception as e:
         return f"Error loading portfolio management: {str(e)}"
 
-# ===== MISSING API ROUTES - THESE ARE THE CRITICAL FIXES =====
+# ===== API ROUTES =====
 
 @admin_bp.route('/api/admin/portfolio/image-categories', methods=['GET'])
 def get_image_categories():
