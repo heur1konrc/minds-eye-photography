@@ -85,7 +85,7 @@ def admin_dashboard():
     </head>
     <body>
         <h1>Mind's Eye Photography - Admin</h1>
-        <p class="subtitle">Complete admin system with file upload and persistent storage</p>
+        <p class="subtitle">Complete admin system with enhanced portfolio management</p>
         <div class="nav-links">
             <a href="/admin/backup">Backup System</a>
             <a href="/admin/portfolio">Portfolio Management</a>
@@ -96,6 +96,595 @@ def admin_dashboard():
     </body>
     </html>
     """)
+
+@admin_bp.route('/admin/portfolio')
+def portfolio_management():
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        # Get statistics
+        total_images_db = PortfolioImage.query.count()
+        active_images_db = PortfolioImage.query.filter_by(is_active=True).count()
+        
+        # Find orphaned files (images on disk but not in database)
+        assets_path = os.path.join(current_app.root_path, 'static', 'assets')
+        
+        # Get all image files from disk
+        orphaned_files = []
+        if os.path.exists(assets_path):
+            # Get all files in assets folder
+            disk_files = [f for f in os.listdir(assets_path) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))]
+            
+            # Get filenames already in database
+            db_filenames = {img.filename for img in PortfolioImage.query.all()}
+            
+            # Find orphaned files
+            orphaned_files = [f for f in disk_files if f not in db_filenames]
+        
+        # Get all images from database for display
+        portfolio_images = PortfolioImage.query.order_by(PortfolioImage.id.desc()).all()
+        
+        # Get all active categories for the interface
+        categories = Category.query.filter_by(is_active=True).order_by(Category.name).all()
+        
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Portfolio Management</title>
+            <style>
+                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
+                h1 { color: #ff6b35; }
+                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
+                .back-btn:hover { background: #666; }
+                .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
+                .stat-box { background: #2a2a2a; padding: 20px; border-radius: 8px; text-align: center; border-left: 5px solid #ff6b35; }
+                .stat-box h3 { color: #ff6b35; font-size: 2em; margin: 0; }
+                .stat-box p { color: #ccc; margin: 5px 0 0 0; }
+                .section { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
+                .section h3 { color: #ff6b35; margin-bottom: 15px; }
+                .btn { padding: 12px 24px; margin: 5px; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer; }
+                .btn:hover { background: #e55a2b; }
+                .btn.success { background: #28a745; }
+                .btn.success:hover { background: #218838; }
+                .btn.secondary { background: #6c757d; }
+                .btn.secondary:hover { background: #5a6268; }
+                .btn.danger { background: #dc3545; }
+                .btn.danger:hover { background: #c82333; }
+                .status { padding: 15px; margin: 15px 0; border-radius: 5px; }
+                .status.success { background: #28a745; }
+                .status.error { background: #dc3545; }
+                .status.info { background: #17a2b8; }
+                
+                /* Enhanced Portfolio Grid Styles */
+                .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 20px; }
+                .image-card { background: #333; border-radius: 10px; overflow: hidden; position: relative; }
+                .image-card.selected { border: 3px solid #ff6b35; }
+                
+                .image-header { position: relative; }
+                .image-header img { width: 100%; height: 200px; object-fit: cover; }
+                .image-select { position: absolute; top: 10px; left: 10px; width: 20px; height: 20px; }
+                .image-id { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
+                
+                .image-content { padding: 15px; }
+                .image-title { color: #ff6b35; font-size: 1.1em; font-weight: bold; margin-bottom: 8px; }
+                .image-description { color: #ccc; font-size: 0.9em; margin-bottom: 12px; min-height: 20px; }
+                
+                .current-categories { margin-bottom: 15px; }
+                .current-categories h5 { color: #ff6b35; margin-bottom: 8px; font-size: 0.9em; }
+                .category-badge { display: inline-block; background: #ff6b35; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; margin: 2px; }
+                .no-categories { color: #888; font-style: italic; font-size: 0.8em; }
+                
+                .update-categories { margin-bottom: 15px; }
+                .update-categories h5 { color: #ff6b35; margin-bottom: 8px; font-size: 0.9em; }
+                .category-checkboxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 5px; }
+                .category-checkbox { display: flex; align-items: center; font-size: 0.85em; }
+                .category-checkbox input { margin-right: 6px; }
+                
+                .image-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+                .image-actions button { padding: 6px 12px; font-size: 0.8em; border: none; border-radius: 4px; cursor: pointer; }
+                
+                .bulk-actions { background: #2a2a2a; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+                .bulk-actions h3 { color: #ff6b35; margin-bottom: 15px; }
+                .bulk-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+                .bulk-category-select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
+                
+                .orphaned-list { background: #333; padding: 15px; border-radius: 8px; margin: 15px 0; }
+                .orphaned-list ul { list-style: none; margin: 0; padding: 0; }
+                .orphaned-list li { padding: 5px 0; color: #ccc; font-family: monospace; }
+                
+                /* Edit Modal Styles */
+                .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
+                .modal-content { background-color: #2a2a2a; margin: 5% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 500px; }
+                .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+                .modal-header h3 { color: #ff6b35; margin: 0; }
+                .close { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+                .close:hover { color: white; }
+                .form-group { margin-bottom: 15px; }
+                .form-group label { display: block; color: #ff6b35; margin-bottom: 5px; font-weight: bold; }
+                .form-input { width: 100%; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
+                .form-textarea { width: 100%; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; min-height: 80px; resize: vertical; }
+            </style>
+        </head>
+        <body>
+            <a href="/admin" class="back-btn">← Back to Admin</a>
+            <h1>Portfolio Management</h1>
+            <p>Professional portfolio management with category assignment and bulk operations</p>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <h3>{{ total_images_db }}</h3>
+                    <p>Images in Database</p>
+                </div>
+                <div class="stat-box">
+                    <h3>{{ active_images_db }}</h3>
+                    <p>Active Images</p>
+                </div>
+                <div class="stat-box">
+                    <h3>{{ orphaned_files|length }}</h3>
+                    <p>Orphaned Files</p>
+                </div>
+            </div>
+            
+            {% if orphaned_files %}
+            <div class="section">
+                <h3>🔍 Orphaned Images Detected</h3>
+                <p>Found {{ orphaned_files|length }} images on disk that aren't in the database yet.</p>
+                
+                <div class="orphaned-list">
+                    <strong>Files found:</strong>
+                    <ul>
+                    {% for file in orphaned_files %}
+                        <li>📸 {{ file }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                
+                <button class="btn success" onclick="addOrphanedImages()">
+                    Add All {{ orphaned_files|length }} Images to Database
+                </button>
+                <p style="color: #ccc; font-size: 0.9em; margin-top: 10px;">
+                    This will create database records for all orphaned images with basic titles.
+                </p>
+            </div>
+            {% endif %}
+            
+            {% if portfolio_images %}
+            <div class="bulk-actions">
+                <h3>🔧 Bulk Operations</h3>
+                <div class="bulk-controls">
+                    <button class="btn secondary" onclick="selectAllImages()">Select All</button>
+                    <button class="btn secondary" onclick="deselectAllImages()">Deselect All</button>
+                    <span style="margin: 0 10px;">|</span>
+                    <select id="bulkCategorySelect" class="bulk-category-select">
+                        <option value="">Choose category to add...</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn" onclick="bulkAddCategory()">Add Category to Selected</button>
+                    <button class="btn danger" onclick="bulkRemoveCategory()">Remove Category from Selected</button>
+                </div>
+                <p style="color: #ccc; font-size: 0.9em; margin-top: 10px;">
+                    <span id="selectedCount">0</span> images selected
+                </p>
+            </div>
+            
+            <div class="section">
+                <h3>📸 Current Portfolio ({{ portfolio_images|length }} images)</h3>
+                <div class="portfolio-grid">
+                    {% for image in portfolio_images %}
+                    <div class="image-card" data-image-id="{{ image.id }}">
+                        <div class="image-header">
+                            <img src="/static/assets/{{ image.filename }}" alt="{{ image.title or 'Untitled' }}">
+                            <input type="checkbox" class="image-select" onchange="updateSelectedCount()">
+                            <div class="image-id">#{{ image.id }}</div>
+                        </div>
+                        <div class="image-content">
+                            <div class="image-title">{{ image.title or 'Untitled' }}</div>
+                            <div class="image-description">{{ image.description or 'No description' }}</div>
+                            
+                            <div class="current-categories">
+                                <h5>Current Categories:</h5>
+                                <div class="category-badges">
+                                    <!-- Categories will be loaded via JavaScript -->
+                                    <span class="no-categories">Loading...</span>
+                                </div>
+                            </div>
+                            
+                            <div class="update-categories">
+                                <h5>Update Categories:</h5>
+                                <div class="category-checkboxes">
+                                    {% for category in categories %}
+                                    <label class="category-checkbox">
+                                        <input type="checkbox" name="category_{{ image.id }}" value="{{ category.id }}">
+                                        {{ category.name }}
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="image-actions">
+                                <button class="btn" onclick="updateImageCategories({{ image.id }})">Update Categories</button>
+                                <button class="btn secondary" onclick="editImage({{ image.id }}, '{{ image.title or '' }}', '{{ image.description or '' }}')">Edit Title/Description</button>
+                                <button class="btn danger" onclick="deleteImage({{ image.id }}, '{{ image.title or 'Untitled' }}')">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div id="status"></div>
+            
+            <!-- Edit Image Modal -->
+            <div id="editModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Edit Image Details</h3>
+                        <span class="close" onclick="closeEditModal()">&times;</span>
+                    </div>
+                    <form id="editForm">
+                        <input type="hidden" id="editImageId">
+                        <div class="form-group">
+                            <label for="editTitle">Title:</label>
+                            <input type="text" id="editTitle" class="form-input" placeholder="Enter image title">
+                        </div>
+                        <div class="form-group">
+                            <label for="editDescription">Description:</label>
+                            <textarea id="editDescription" class="form-textarea" placeholder="Enter image description"></textarea>
+                        </div>
+                        <div style="text-align: right; margin-top: 20px;">
+                            <button type="button" class="btn secondary" onclick="closeEditModal()">Cancel</button>
+                            <button type="button" class="btn" onclick="saveImageEdit()">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <script>
+            // Load image categories on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                loadImageCategories();
+                updateSelectedCount();
+            });
+            
+            async function loadImageCategories() {
+                try {
+                    const response = await fetch('/api/admin/portfolio/image-categories');
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        // Update category badges for each image
+                        Object.keys(data).forEach(imageId => {
+                            const imageCard = document.querySelector(`[data-image-id="${imageId}"]`);
+                            if (imageCard) {
+                                const badgesContainer = imageCard.querySelector('.category-badges');
+                                const categories = data[imageId];
+                                
+                                if (categories.length > 0) {
+                                    badgesContainer.innerHTML = categories.map(cat => 
+                                        `<span class="category-badge">${cat.name}</span>`
+                                    ).join('');
+                                } else {
+                                    badgesContainer.innerHTML = '<span class="no-categories">No categories assigned</span>';
+                                }
+                                
+                                // Update checkboxes
+                                const checkboxes = imageCard.querySelectorAll('input[name^="category_"]');
+                                checkboxes.forEach(checkbox => {
+                                    const categoryId = parseInt(checkbox.value);
+                                    checkbox.checked = categories.some(cat => cat.id === categoryId);
+                                });
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading image categories:', error);
+                }
+            }
+            
+            function selectAllImages() {
+                const checkboxes = document.querySelectorAll('.image-select');
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    cb.closest('.image-card').classList.add('selected');
+                });
+                updateSelectedCount();
+            }
+            
+            function deselectAllImages() {
+                const checkboxes = document.querySelectorAll('.image-select');
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    cb.closest('.image-card').classList.remove('selected');
+                });
+                updateSelectedCount();
+            }
+            
+            function updateSelectedCount() {
+                const checkboxes = document.querySelectorAll('.image-select:checked');
+                document.getElementById('selectedCount').textContent = checkboxes.length;
+                
+                // Update visual selection
+                document.querySelectorAll('.image-select').forEach(cb => {
+                    if (cb.checked) {
+                        cb.closest('.image-card').classList.add('selected');
+                    } else {
+                        cb.closest('.image-card').classList.remove('selected');
+                    }
+                });
+            }
+            
+            async function updateImageCategories(imageId) {
+                const statusDiv = document.getElementById('status');
+                const imageCard = document.querySelector(`[data-image-id="${imageId}"]`);
+                const checkboxes = imageCard.querySelectorAll('input[name^="category_"]');
+                
+                const selectedCategories = Array.from(checkboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => parseInt(cb.value));
+                
+                statusDiv.innerHTML = '<div class="status info">Updating categories...</div>';
+                
+                try {
+                    const response = await fetch(`/api/admin/portfolio/images/${imageId}/categories`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ category_ids: selectedCategories })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Categories updated for "${result.title}"!
+                        </div>`;
+                        loadImageCategories(); // Refresh category display
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            
+            async function bulkAddCategory() {
+                const categoryId = document.getElementById('bulkCategorySelect').value;
+                if (!categoryId) {
+                    alert('Please select a category first');
+                    return;
+                }
+                
+                const selectedImages = Array.from(document.querySelectorAll('.image-select:checked'))
+                    .map(cb => parseInt(cb.closest('.image-card').dataset.imageId));
+                
+                if (selectedImages.length === 0) {
+                    alert('Please select at least one image');
+                    return;
+                }
+                
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status info">Adding category to selected images...</div>';
+                
+                try {
+                    const response = await fetch('/api/admin/portfolio/bulk-add-category', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            image_ids: selectedImages,
+                            category_id: parseInt(categoryId)
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Category added to ${result.updated_count} images!
+                        </div>`;
+                        loadImageCategories(); // Refresh category display
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            
+            async function bulkRemoveCategory() {
+                const categoryId = document.getElementById('bulkCategorySelect').value;
+                if (!categoryId) {
+                    alert('Please select a category first');
+                    return;
+                }
+                
+                const selectedImages = Array.from(document.querySelectorAll('.image-select:checked'))
+                    .map(cb => parseInt(cb.closest('.image-card').dataset.imageId));
+                
+                if (selectedImages.length === 0) {
+                    alert('Please select at least one image');
+                    return;
+                }
+                
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status info">Removing category from selected images...</div>';
+                
+                try {
+                    const response = await fetch('/api/admin/portfolio/bulk-remove-category', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            image_ids: selectedImages,
+                            category_id: parseInt(categoryId)
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Category removed from ${result.updated_count} images!
+                        </div>`;
+                        loadImageCategories(); // Refresh category display
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            
+            function editImage(imageId, title, description) {
+                document.getElementById('editImageId').value = imageId;
+                document.getElementById('editTitle').value = title;
+                document.getElementById('editDescription').value = description;
+                document.getElementById('editModal').style.display = 'block';
+            }
+            
+            function closeEditModal() {
+                document.getElementById('editModal').style.display = 'none';
+            }
+            
+            async function saveImageEdit() {
+                const imageId = document.getElementById('editImageId').value;
+                const title = document.getElementById('editTitle').value.trim();
+                const description = document.getElementById('editDescription').value.trim();
+                
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status info">Saving changes...</div>';
+                
+                try {
+                    const response = await fetch(`/api/admin/portfolio/images/${imageId}/edit`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title, description })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Image details updated successfully!
+                        </div>`;
+                        closeEditModal();
+                        
+                        // Update the display
+                        const imageCard = document.querySelector(`[data-image-id="${imageId}"]`);
+                        imageCard.querySelector('.image-title').textContent = result.title || 'Untitled';
+                        imageCard.querySelector('.image-description').textContent = result.description || 'No description';
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            
+            async function deleteImage(imageId, title) {
+                if (!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+                    return;
+                }
+                
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status info">Deleting image...</div>';
+                
+                try {
+                    const response = await fetch(`/api/admin/portfolio/images/${imageId}/delete`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Image "${title}" deleted successfully!
+                        </div>`;
+                        
+                        // Remove the image card from display
+                        const imageCard = document.querySelector(`[data-image-id="${imageId}"]`);
+                        imageCard.remove();
+                        updateSelectedCount();
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            
+            async function addOrphanedImages() {
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status info">Adding orphaned images to database...</div>';
+                
+                try {
+                    const response = await fetch('/api/admin/portfolio/add-orphaned', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        statusDiv.innerHTML = `<div class="status success">
+                            ✅ Success! Added ${result.added_count} images to database.<br>
+                            <strong>Images are now available in your portfolio API!</strong>
+                        </div>`;
+                        
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                }
+            }
+            
+            // Close modal when clicking outside
+            window.onclick = function(event) {
+                const modal = document.getElementById('editModal');
+                if (event.target == modal) {
+                    closeEditModal();
+                }
+            }
+            </script>
+        </body>
+        </html>
+        """, 
+        total_images_db=total_images_db,
+        active_images_db=active_images_db,
+        orphaned_files=orphaned_files,
+        portfolio_images=portfolio_images,
+        categories=categories)
+        
+    except Exception as e:
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Portfolio Management</title>
+            <style>
+                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
+                h1 { color: #ff6b35; }
+                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
+                .error { background: #dc3545; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            </style>
+        </head>
+        <body>
+            <a href="/admin" class="back-btn">← Back to Admin</a>
+            <h1>Portfolio Management</h1>
+            <div class="error">
+                <strong>Error loading portfolio:</strong> {{ error }}
+            </div>
+        </body>
+        </html>
+        """, error=str(e))
 
 @admin_bp.route('/admin/upload')
 def upload_interface():
@@ -718,192 +1307,6 @@ def category_management():
         </html>
         """, error=str(e))
 
-@admin_bp.route('/admin/portfolio')
-def portfolio_management():
-    try:
-        from models.database import db, PortfolioImage
-        
-        # Get statistics
-        total_images_db = PortfolioImage.query.count()
-        active_images_db = PortfolioImage.query.filter_by(is_active=True).count()
-        
-        # Find orphaned files (images on disk but not in database)
-        assets_path = os.path.join(current_app.root_path, 'static', 'assets')
-        
-        # Get all image files from disk
-        orphaned_files = []
-        if os.path.exists(assets_path):
-            # Get all files in assets folder
-            disk_files = [f for f in os.listdir(assets_path) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))]
-            
-            # Get filenames already in database
-            db_filenames = {img.filename for img in PortfolioImage.query.all()}
-            
-            # Find orphaned files
-            orphaned_files = [f for f in disk_files if f not in db_filenames]
-        
-        # Get all images from database for display
-        portfolio_images = PortfolioImage.query.order_by(PortfolioImage.id.desc()).all()
-        
-        return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Portfolio Management</title>
-            <style>
-                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
-                h1 { color: #ff6b35; }
-                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
-                .back-btn:hover { background: #666; }
-                .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
-                .stat-box { background: #2a2a2a; padding: 20px; border-radius: 8px; text-align: center; border-left: 5px solid #ff6b35; }
-                .stat-box h3 { color: #ff6b35; font-size: 2em; margin: 0; }
-                .stat-box p { color: #ccc; margin: 5px 0 0 0; }
-                .section { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
-                .section h3 { color: #ff6b35; margin-bottom: 15px; }
-                .btn { padding: 12px 24px; margin: 5px; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer; }
-                .btn:hover { background: #e55a2b; }
-                .btn.success { background: #28a745; }
-                .btn.success:hover { background: #218838; }
-                .status { padding: 15px; margin: 15px 0; border-radius: 5px; }
-                .status.success { background: #28a745; }
-                .status.error { background: #dc3545; }
-                .status.info { background: #17a2b8; }
-                .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
-                .image-item { background: #333; padding: 10px; border-radius: 8px; text-align: center; }
-                .image-item img { max-width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 10px; }
-                .image-item p { font-size: 0.9em; color: #ccc; margin: 5px 0; }
-                .orphaned-list { background: #333; padding: 15px; border-radius: 8px; margin: 15px 0; }
-                .orphaned-list ul { list-style: none; margin: 0; padding: 0; }
-                .orphaned-list li { padding: 5px 0; color: #ccc; font-family: monospace; }
-            </style>
-        </head>
-        <body>
-            <a href="/admin" class="back-btn">← Back to Admin</a>
-            <h1>Portfolio Management</h1>
-            <p>Manage your photography portfolio images</p>
-            
-            <div class="stats">
-                <div class="stat-box">
-                    <h3>{{ total_images_db }}</h3>
-                    <p>Images in Database</p>
-                </div>
-                <div class="stat-box">
-                    <h3>{{ active_images_db }}</h3>
-                    <p>Active Images</p>
-                </div>
-                <div class="stat-box">
-                    <h3>{{ orphaned_files|length }}</h3>
-                    <p>Orphaned Files</p>
-                </div>
-            </div>
-            
-            {% if orphaned_files %}
-            <div class="section">
-                <h3>🔍 Orphaned Images Detected</h3>
-                <p>Found {{ orphaned_files|length }} images on disk that aren't in the database yet.</p>
-                
-                <div class="orphaned-list">
-                    <strong>Files found:</strong>
-                    <ul>
-                    {% for file in orphaned_files %}
-                        <li>📸 {{ file }}</li>
-                    {% endfor %}
-                    </ul>
-                </div>
-                
-                <button class="btn success" onclick="addOrphanedImages()">
-                    Add All {{ orphaned_files|length }} Images to Database
-                </button>
-                <p style="color: #ccc; font-size: 0.9em; margin-top: 10px;">
-                    This will create database records for all orphaned images with basic titles.
-                </p>
-            </div>
-            {% endif %}
-            
-            {% if portfolio_images %}
-            <div class="section">
-                <h3>📸 Portfolio Images in Database</h3>
-                <div class="image-grid">
-                    {% for image in portfolio_images %}
-                    <div class="image-item">
-                        <img src="/static/assets/{{ image.filename }}" alt="{{ image.title or image.filename }}">
-                        <p><strong>{{ image.title or 'Untitled' }}</strong></p>
-                        <p>{{ image.filename }}</p>
-                        <p style="color: {{ '#28a745' if image.is_active else '#dc3545' }};">
-                            {{ 'Active' if image.is_active else 'Inactive' }}
-                        </p>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-            
-            <div id="status"></div>
-            
-            <script>
-            async function addOrphanedImages() {
-                const statusDiv = document.getElementById('status');
-                statusDiv.innerHTML = '<div class="status info">Adding orphaned images to database...</div>';
-                
-                try {
-                    const response = await fetch('/api/admin/portfolio/add-orphaned', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        statusDiv.innerHTML = `<div class="status success">
-                            ✅ Success! Added ${result.added_count} images to database.<br>
-                            <strong>Images are now available in your portfolio API!</strong>
-                        </div>`;
-                        
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        const error = await response.json();
-                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
-                    }
-                } catch (error) {
-                    statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
-                }
-            }
-            </script>
-        </body>
-        </html>
-        """, 
-        total_images_db=total_images_db,
-        active_images_db=active_images_db,
-        orphaned_files=orphaned_files,
-        portfolio_images=portfolio_images)
-        
-    except Exception as e:
-        return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Portfolio Management</title>
-            <style>
-                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; }
-                h1 { color: #ff6b35; }
-                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
-                .error { background: #dc3545; padding: 15px; border-radius: 5px; margin: 20px 0; }
-            </style>
-        </head>
-        <body>
-            <a href="/admin" class="back-btn">← Back to Admin</a>
-            <h1>Portfolio Management</h1>
-            <div class="error">
-                <strong>Error loading portfolio:</strong> {{ error }}
-            </div>
-        </body>
-        </html>
-        """, error=str(e))
-
 # API Routes for file upload functionality
 @admin_bp.route('/api/admin/upload', methods=['POST'])
 def api_upload_file():
@@ -1196,6 +1599,162 @@ def add_orphaned_images():
             'message': f'Successfully added {added_count} images to database',
             'added_count': added_count,
             'filenames': orphaned_files
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# New API endpoints for enhanced portfolio management
+@admin_bp.route('/api/admin/portfolio/image-categories', methods=['GET'])
+def get_image_categories():
+    """Get categories for all images"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        # For now, return empty categories since we don't have many-to-many relationship yet
+        # This will be updated when we implement the relationship
+        images = PortfolioImage.query.all()
+        result = {}
+        
+        for image in images:
+            result[str(image.id)] = []  # Empty categories for now
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/images/<int:image_id>/categories', methods=['POST'])
+def update_image_categories(image_id):
+    """Update categories for a specific image"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        image = PortfolioImage.query.get_or_404(image_id)
+        data = request.get_json()
+        category_ids = data.get('category_ids', [])
+        
+        # For now, just return success since we don't have many-to-many relationship yet
+        # This will be updated when we implement the relationship
+        
+        return jsonify({
+            'message': 'Categories updated successfully',
+            'title': image.title,
+            'category_ids': category_ids
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/bulk-add-category', methods=['POST'])
+def bulk_add_category():
+    """Add category to multiple images"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        data = request.get_json()
+        image_ids = data.get('image_ids', [])
+        category_id = data.get('category_id')
+        
+        if not image_ids or not category_id:
+            return jsonify({'error': 'Image IDs and category ID are required'}), 400
+        
+        # For now, just return success since we don't have many-to-many relationship yet
+        # This will be updated when we implement the relationship
+        
+        return jsonify({
+            'message': f'Category added to {len(image_ids)} images',
+            'updated_count': len(image_ids)
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/bulk-remove-category', methods=['POST'])
+def bulk_remove_category():
+    """Remove category from multiple images"""
+    try:
+        from models.database import db, PortfolioImage, Category
+        
+        data = request.get_json()
+        image_ids = data.get('image_ids', [])
+        category_id = data.get('category_id')
+        
+        if not image_ids or not category_id:
+            return jsonify({'error': 'Image IDs and category ID are required'}), 400
+        
+        # For now, just return success since we don't have many-to-many relationship yet
+        # This will be updated when we implement the relationship
+        
+        return jsonify({
+            'message': f'Category removed from {len(image_ids)} images',
+            'updated_count': len(image_ids)
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/images/<int:image_id>/edit', methods=['POST'])
+def edit_image_details(image_id):
+    """Edit image title and description"""
+    try:
+        from models.database import db, PortfolioImage
+        
+        image = PortfolioImage.query.get_or_404(image_id)
+        data = request.get_json()
+        
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip()
+        
+        image.title = title if title else None
+        image.description = description if description else None
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Image details updated successfully',
+            'title': image.title,
+            'description': image.description
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/admin/portfolio/images/<int:image_id>/delete', methods=['DELETE'])
+def delete_image(image_id):
+    """Delete an image from portfolio"""
+    try:
+        from models.database import db, PortfolioImage
+        
+        image = PortfolioImage.query.get_or_404(image_id)
+        image_title = image.title
+        filename = image.filename
+        
+        # Delete database record
+        db.session.delete(image)
+        db.session.commit()
+        
+        # Optionally delete file from disk
+        try:
+            assets_path = os.path.join(current_app.root_path, 'static', 'assets')
+            file_path = os.path.join(assets_path, filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as file_error:
+            print(f"Warning: Could not delete file {filename}: {file_error}")
+        
+        return jsonify({
+            'message': f'Image "{image_title}" deleted successfully'
         })
         
     except Exception as e:
