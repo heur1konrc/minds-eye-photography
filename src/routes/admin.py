@@ -146,17 +146,57 @@ def portfolio_management():
         <head>
             <title>Portfolio Management</title>
             <style>
-                body { background: #1a1a1a; color: white; font-family: Arial; padding: 20px; line-height: 1.6; }
+                body { 
+                    background: #1a1a1a; 
+                    color: white; 
+                    font-family: Arial; 
+                    padding: 20px; 
+                    line-height: 1.6; 
+                }
                 h1 { color: #ff6b35; margin-bottom: 10px; }
-                .back-btn { background: #555; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-bottom: 20px; display: inline-block; }
+                .back-btn { 
+                    background: #555; 
+                    color: white; 
+                    padding: 8px 16px; 
+                    text-decoration: none; 
+                    border-radius: 4px; 
+                    margin-bottom: 20px; 
+                    display: inline-block; 
+                }
                 .back-btn:hover { background: #666; }
-                .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
-                .stat-box { background: #2a2a2a; padding: 20px; border-radius: 8px; text-align: center; border-left: 5px solid #ff6b35; }
+                .stats { 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+                    gap: 20px; 
+                    margin: 20px 0; 
+                }
+                .stat-box { 
+                    background: #2a2a2a; 
+                    padding: 20px; 
+                    border-radius: 8px; 
+                    text-align: center; 
+                    border-left: 5px solid #ff6b35; 
+                }
                 .stat-box h3 { color: #ff6b35; font-size: 2em; margin: 0; }
                 .stat-box p { color: #ccc; margin: 5px 0 0 0; }
-                .section { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
+                .section { 
+                    background: #2a2a2a; 
+                    padding: 20px; 
+                    border-radius: 10px; 
+                    margin: 20px 0; 
+                }
                 .section h3 { color: #ff6b35; margin-bottom: 15px; }
-                .btn { padding: 12px 24px; margin: 5px; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
+                .btn { 
+                    padding: 12px 24px; 
+                    margin: 5px; 
+                    background: #ff6b35; 
+                    color: white; 
+                    border: none; 
+                    border-radius: 5px; 
+                    cursor: pointer; 
+                    text-decoration: none; 
+                    display: inline-block; 
+                }
                 .btn:hover { background: #e55a2b; }
                 .btn.success { background: #28a745; }
                 .btn.success:hover { background: #218838; }
@@ -164,54 +204,176 @@ def portfolio_management():
                 .btn.secondary:hover { background: #5a6268; }
                 .btn.danger { background: #dc3545; }
                 .btn.danger:hover { background: #c82333; }
-                .filter-section { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
-                .filter-controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-                .filter-select { padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; min-width: 200px; }
-                .bulk-actions { background: #2a2a2a; padding: 20px; border-radius: 10px; margin: 20px 0; }
-                .bulk-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-                .bulk-category-select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
-                .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 20px; }
-                .image-card { background: #333; border-radius: 10px; overflow: hidden; transition: transform 0.2s; position: relative; }
+                
+                .filter-section { 
+                    background: #2a2a2a; 
+                    padding: 20px; 
+                    border-radius: 10px; 
+                    margin: 20px 0; 
+                }
+                .filter-controls { 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 15px; 
+                    flex-wrap: wrap; 
+                }
+                .filter-select { 
+                    padding: 10px; 
+                    background: #333; 
+                    color: white; 
+                    border: 1px solid #555; 
+                    border-radius: 4px; 
+                    min-width: 200px; 
+                }
+                
+                .portfolio-grid { 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); 
+                    gap: 20px; 
+                    margin-top: 20px; 
+                }
+                .image-card { 
+                    background: #333; 
+                    border-radius: 10px; 
+                    overflow: hidden; 
+                    transition: transform 0.2s; 
+                    position: relative; 
+                }
                 .image-card:hover { transform: translateY(-5px); }
                 .image-card.selected { border: 3px solid #ff6b35; }
-                .image-header { position: relative; }
-                .image-header img { width: 100%; height: 200px; object-fit: cover; }
-                .image-select { position: absolute; top: 10px; left: 10px; width: 20px; height: 20px; }
-                .image-id { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
+                
+                .image-header { 
+                    position: relative; 
+                    height: 200px;
+                    background: #222;
+                }
+                .image-header img { 
+                    width: 100%; 
+                    height: 100%; 
+                    object-fit: cover; 
+                    display: block;
+                }
+                .image-select { 
+                    position: absolute; 
+                    top: 10px; 
+                    left: 10px; 
+                    width: 20px; 
+                    height: 20px; 
+                }
+                .image-id { 
+                    position: absolute; 
+                    top: 10px; 
+                    right: 10px; 
+                    background: rgba(0,0,0,0.7); 
+                    color: white; 
+                    padding: 4px 8px; 
+                    border-radius: 4px; 
+                    font-size: 0.8em; 
+                }
+                
                 .image-content { padding: 15px; }
-                .image-title { font-size: 1.1em; font-weight: bold; color: #ff6b35; margin-bottom: 5px; }
-                .image-description { color: #ccc; margin-bottom: 15px; font-size: 0.9em; }
-                .current-categories h5 { color: #ff6b35; margin: 10px 0 5px 0; font-size: 0.9em; }
+                .image-title { 
+                    font-size: 1.1em; 
+                    font-weight: bold; 
+                    color: #ff6b35; 
+                    margin-bottom: 5px; 
+                }
+                .image-description { 
+                    color: #ccc; 
+                    margin-bottom: 15px; 
+                    font-size: 0.9em; 
+                }
+                
+                .current-categories h5 { 
+                    color: #ff6b35; 
+                    margin: 10px 0 5px 0; 
+                    font-size: 0.9em; 
+                }
                 .category-badges { margin-bottom: 15px; }
-                .category-badge { background: #ff6b35; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; margin: 2px; display: inline-block; cursor: pointer; }
+                .category-badge { 
+                    background: #ff6b35; 
+                    color: white; 
+                    padding: 4px 8px; 
+                    border-radius: 4px; 
+                    font-size: 0.8em; 
+                    margin: 2px; 
+                    display: inline-block; 
+                    cursor: pointer; 
+                }
                 .category-badge:hover { background: #e55a2b; }
-                .no-categories { color: #888; font-style: italic; font-size: 0.8em; }
-                .update-categories h5 { color: #ff6b35; margin: 10px 0 5px 0; font-size: 0.9em; }
+                .no-categories { 
+                    color: #888; 
+                    font-style: italic; 
+                    font-size: 0.8em; 
+                }
+                
+                .update-categories h5 { 
+                    color: #ff6b35; 
+                    margin: 10px 0 5px 0; 
+                    font-size: 0.9em; 
+                }
                 .category-checkboxes { margin-bottom: 15px; }
-                .category-checkbox { display: block; margin: 5px 0; color: #ccc; font-size: 0.9em; }
+                .category-checkbox { 
+                    display: block; 
+                    margin: 5px 0; 
+                    color: #ccc; 
+                    font-size: 0.9em; 
+                }
                 .category-checkbox input { margin-right: 8px; }
-                .image-actions { display: flex; gap: 5px; flex-wrap: wrap; }
-                .image-actions .btn { padding: 8px 12px; font-size: 0.8em; }
-                .status { padding: 15px; margin: 15px 0; border-radius: 5px; }
+                
+                .image-actions { 
+                    display: flex; 
+                    gap: 5px; 
+                    flex-wrap: wrap; 
+                }
+                .image-actions .btn { 
+                    padding: 8px 12px; 
+                    font-size: 0.8em; 
+                }
+                
+                .status { 
+                    padding: 15px; 
+                    margin: 15px 0; 
+                    border-radius: 5px; 
+                }
                 .status.success { background: #28a745; }
                 .status.error { background: #dc3545; }
                 .status.info { background: #17a2b8; }
-                .orphaned-list { background: #333; padding: 15px; border-radius: 5px; margin: 15px 0; }
-                .orphaned-list ul { margin: 10px 0; padding-left: 20px; }
-                .orphaned-list li { color: #ccc; margin: 5px 0; }
                 
-                /* Modal styles */
-                .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
-                .modal-content { background-color: #2a2a2a; margin: 5% auto; padding: 0; border-radius: 10px; width: 90%; max-width: 500px; }
-                .modal-header { background: #ff6b35; color: white; padding: 15px 20px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; }
-                .modal-header h3 { margin: 0; }
-                .close { color: white; font-size: 28px; font-weight: bold; cursor: pointer; }
-                .close:hover { opacity: 0.7; }
-                .form-group { margin-bottom: 15px; padding: 0 20px; }
-                .form-group label { display: block; color: #ff6b35; margin-bottom: 5px; font-weight: bold; }
-                .form-input { width: 100%; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; box-sizing: border-box; }
-                .form-textarea { width: 100%; padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; min-height: 80px; resize: vertical; box-sizing: border-box; }
-                .modal-footer { padding: 20px; text-align: right; }
+                .orphaned-list { 
+                    background: #333; 
+                    padding: 15px; 
+                    border-radius: 5px; 
+                    margin: 15px 0; 
+                }
+                .orphaned-list ul { 
+                    margin: 10px 0; 
+                    padding-left: 20px; 
+                }
+                .orphaned-list li { 
+                    color: #ccc; 
+                    margin: 5px 0; 
+                }
+                
+                .bulk-actions { 
+                    background: #2a2a2a; 
+                    padding: 20px; 
+                    border-radius: 10px; 
+                    margin: 20px 0; 
+                }
+                .bulk-controls { 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 10px; 
+                    flex-wrap: wrap; 
+                }
+                .bulk-category-select { 
+                    padding: 8px; 
+                    background: #333; 
+                    color: white; 
+                    border: 1px solid #555; 
+                    border-radius: 4px; 
+                }
             </style>
         </head>
         <body>
@@ -279,7 +441,6 @@ def portfolio_management():
             </div>
             {% endif %}
             
-            {% if portfolio_images %}
             <div class="bulk-actions">
                 <h3>🔧 Bulk Operations</h3>
                 <div class="bulk-controls">
@@ -300,13 +461,19 @@ def portfolio_management():
                 </p>
             </div>
             
+            {% if portfolio_images %}
             <div class="section">
                 <h3>📸 {{ 'Filtered Portfolio' if category_filter else 'Current Portfolio' }} ({{ portfolio_images|length }} images)</h3>
                 <div class="portfolio-grid">
                     {% for image in portfolio_images %}
                     <div class="image-card" data-image-id="{{ image.id }}">
                         <div class="image-header">
-                            <img src="/static/assets/{{ image.filename }}" alt="{{ image.title or 'Untitled' }}">
+                            <img src="/static/assets/{{ image.filename }}" 
+                                 alt="{{ image.title or 'Untitled' }}"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <div style="display:none; padding: 20px; text-align: center; color: #ff6b35;">
+                                📷 Image: {{ image.filename }}
+                            </div>
                             <input type="checkbox" class="image-select" onchange="updateSelectedCount()">
                             <div class="image-id">#{{ image.id }}</div>
                         </div>
@@ -317,7 +484,13 @@ def portfolio_management():
                             <div class="current-categories">
                                 <h5>Current Categories:</h5>
                                 <div class="category-badges" data-image-id="{{ image.id }}">
-                                    <span class="no-categories">Loading...</span>
+                                    {% if image.categories %}
+                                        {% for cat in image.categories %}
+                                        <span class="category-badge" onclick="filterByBadgeClick('{{ cat.name }}')">{{ cat.name }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                    <span class="no-categories">No categories assigned</span>
+                                    {% endif %}
                                 </div>
                             </div>
                             
@@ -326,7 +499,10 @@ def portfolio_management():
                                 <div class="category-checkboxes">
                                     {% for category in categories %}
                                     <label class="category-checkbox">
-                                        <input type="checkbox" name="category_{{ image.id }}" value="{{ category.id }}">
+                                        <input type="checkbox" 
+                                               name="category_{{ image.id }}" 
+                                               value="{{ category.id }}"
+                                               {{ 'checked' if category in image.categories else '' }}>
                                         {{ category.name }}
                                     </label>
                                     {% endfor %}
@@ -335,8 +511,8 @@ def portfolio_management():
                             
                             <div class="image-actions">
                                 <button class="btn" onclick="updateImageCategories({{ image.id }})">Update Categories</button>
-                                <button class="btn secondary" onclick="editImage({{ image.id }}, '{{ image.title or '' }}', '{{ image.description or '' }}')">Edit Title/Description</button>
-                                <button class="btn danger" onclick="deleteImage({{ image.id }}, '{{ image.title or 'Untitled' }}')">Delete</button>
+                                <button class="btn secondary" onclick="editImage({{ image.id }}, '{{ (image.title or '') | replace("'", "\\'") }}', '{{ (image.description or '') | replace("'", "\\'") }}')">Edit Title/Description</button>
+                                <button class="btn danger" onclick="deleteImage({{ image.id }}, '{{ (image.title or 'Untitled') | replace("'", "\\'") }}')">Delete</button>
                             </div>
                         </div>
                     </div>
@@ -347,35 +523,9 @@ def portfolio_management():
             
             <div id="status"></div>
             
-            <!-- Edit Image Modal -->
-            <div id="editModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Edit Image Details</h3>
-                        <span class="close" onclick="closeEditModal()">&times;</span>
-                    </div>
-                    <form id="editForm">
-                        <input type="hidden" id="editImageId">
-                        <div class="form-group">
-                            <label for="editTitle">Title:</label>
-                            <input type="text" id="editTitle" class="form-input" placeholder="Enter image title">
-                        </div>
-                        <div class="form-group">
-                            <label for="editDescription">Description:</label>
-                            <textarea id="editDescription" class="form-textarea" placeholder="Enter image description"></textarea>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn secondary" onclick="closeEditModal()">Cancel</button>
-                            <button type="button" class="btn" onclick="saveImageEdit()">Save Changes</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
             <script>
-            // Load image categories on page load
+            // Update selected count on page load
             document.addEventListener('DOMContentLoaded', function() {
-                loadImageCategories();
                 updateSelectedCount();
             });
             
@@ -400,51 +550,6 @@ def portfolio_management():
                 const url = new URL(window.location);
                 url.searchParams.set('category', categoryName);
                 window.location.href = url.toString();
-            }
-            
-            async function loadImageCategories() {
-                try {
-                    const response = await fetch('/api/admin/portfolio/image-categories');
-                    if (response.ok) {
-                        const data = await response.json();
-                        
-                        // Update category badges for each image
-                        Object.keys(data).forEach(imageId => {
-                            const badgesContainer = document.querySelector(`[data-image-id="${imageId}"]`);
-                            if (badgesContainer) {
-                                const categories = data[imageId];
-                                
-                                if (categories.length > 0) {
-                                    badgesContainer.innerHTML = categories.map(cat => 
-                                        `<span class="category-badge" onclick="filterByBadgeClick('${cat.name}')">${cat.name}</span>`
-                                    ).join('');
-                                } else {
-                                    badgesContainer.innerHTML = '<span class="no-categories">No categories assigned</span>';
-                                }
-                                
-                                // Update checkboxes
-                                const imageCard = document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-card');
-                                const checkboxes = imageCard.querySelectorAll('input[name^="category_"]');
-                                checkboxes.forEach(checkbox => {
-                                    const categoryId = parseInt(checkbox.value);
-                                    checkbox.checked = categories.some(cat => cat.id === categoryId);
-                                });
-                            }
-                        });
-                    } else {
-                        console.error('Failed to load image categories:', response.status);
-                        // Show error in all category badge containers
-                        document.querySelectorAll('.category-badges').forEach(container => {
-                            container.innerHTML = '<span class="no-categories">Error loading categories</span>';
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error loading image categories:', error);
-                    // Show error in all category badge containers
-                    document.querySelectorAll('.category-badges').forEach(container => {
-                        container.innerHTML = '<span class="no-categories">Error loading categories</span>';
-                    });
-                }
             }
             
             function selectAllImages() {
@@ -500,9 +605,13 @@ def portfolio_management():
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ Categories updated for "${result.title}"!
+                            ✅ Categories updated for "${result.title}"! Refreshing page...
                         </div>`;
-                        loadImageCategories(); // Refresh category display
+                        
+                        // Refresh page to show updated categories
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
                     } else {
                         const error = await response.json();
                         statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
@@ -543,9 +652,13 @@ def portfolio_management():
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ Category added to ${result.updated_count} images!
+                            ✅ Category added to ${result.updated_count} images! Refreshing page...
                         </div>`;
-                        loadImageCategories(); // Refresh category display
+                        
+                        // Refresh page to show updated categories
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
                     } else {
                         const error = await response.json();
                         statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
@@ -586,9 +699,13 @@ def portfolio_management():
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ Category removed from ${result.updated_count} images!
+                            ✅ Category removed from ${result.updated_count} images! Refreshing page...
                         </div>`;
-                        loadImageCategories(); // Refresh category display
+                        
+                        // Refresh page to show updated categories
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
                     } else {
                         const error = await response.json();
                         statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
@@ -599,49 +716,35 @@ def portfolio_management():
             }
             
             function editImage(imageId, title, description) {
-                document.getElementById('editImageId').value = imageId;
-                document.getElementById('editTitle').value = title;
-                document.getElementById('editDescription').value = description;
-                document.getElementById('editModal').style.display = 'block';
-            }
-            
-            function closeEditModal() {
-                document.getElementById('editModal').style.display = 'none';
-            }
-            
-            async function saveImageEdit() {
-                const imageId = document.getElementById('editImageId').value;
-                const title = document.getElementById('editTitle').value.trim();
-                const description = document.getElementById('editDescription').value.trim();
+                const newTitle = prompt('Enter new title:', title);
+                if (newTitle === null) return; // User cancelled
+                
+                const newDescription = prompt('Enter new description:', description);
+                if (newDescription === null) return; // User cancelled
                 
                 const statusDiv = document.getElementById('status');
                 statusDiv.innerHTML = '<div class="status info">Saving changes...</div>';
                 
-                try {
-                    const response = await fetch(`/api/admin/portfolio/images/${imageId}/edit`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ title, description })
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        statusDiv.innerHTML = `<div class="status success">
-                            ✅ Image details updated successfully!
-                        </div>`;
-                        closeEditModal();
-                        
-                        // Update the display
-                        const imageCard = document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-card');
-                        imageCard.querySelector('.image-title').textContent = result.title || 'Untitled';
-                        imageCard.querySelector('.image-description').textContent = result.description || 'No description';
+                fetch(`/api/admin/portfolio/images/${imageId}/edit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        title: newTitle.trim(), 
+                        description: newDescription.trim() 
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        statusDiv.innerHTML = '<div class="status success">✅ Image details updated! Refreshing page...</div>';
+                        setTimeout(() => window.location.reload(), 1500);
                     } else {
-                        const error = await response.json();
-                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
+                        statusDiv.innerHTML = `<div class="status error">❌ Error: ${result.error}</div>`;
                     }
-                } catch (error) {
+                })
+                .catch(error => {
                     statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
-                }
+                });
             }
             
             async function deleteImage(imageId, title) {
@@ -661,13 +764,12 @@ def portfolio_management():
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ Image "${result.title}" deleted successfully!
+                            ✅ Image "${result.title}" deleted successfully! Refreshing page...
                         </div>`;
                         
-                        // Remove the image card from display
-                        const imageCard = document.querySelector(`[data-image-id="${imageId}"]`).closest('.image-card');
-                        imageCard.remove();
-                        updateSelectedCount();
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
                     } else {
                         const error = await response.json();
                         statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message || error.error}</div>`;
@@ -690,7 +792,7 @@ def portfolio_management():
                     if (response.ok) {
                         const result = await response.json();
                         statusDiv.innerHTML = `<div class="status success">
-                            ✅ ${result.added_count} orphaned images added to database!
+                            ✅ ${result.added_count} orphaned images added to database! Refreshing page...
                         </div>`;
                         
                         // Reload the page to show the new images
@@ -720,27 +822,6 @@ def portfolio_management():
         return f"Error loading portfolio management: {str(e)}"
 
 # ===== API ROUTES =====
-
-@admin_bp.route('/api/admin/portfolio/image-categories', methods=['GET'])
-def get_image_categories():
-    """Get all image-category relationships for display"""
-    try:
-        from models.database import db, PortfolioImage, Category
-        
-        # Get all images with their categories
-        images = PortfolioImage.query.all()
-        result = {}
-        
-        for image in images:
-            result[str(image.id)] = [
-                {'id': cat.id, 'name': cat.name} 
-                for cat in image.categories
-            ]
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/admin/portfolio/images/<int:image_id>/categories', methods=['POST'])
 def update_image_categories(image_id):
