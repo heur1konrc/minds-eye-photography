@@ -3,6 +3,7 @@ from flask import Flask, render_template, jsonify
 from models.database import db
 from routes.admin import admin_bp
 from routes.api import api_bp
+from routes.frontend import frontend_bp
 
 def create_app():
     app = Flask(__name__)
@@ -26,17 +27,13 @@ def create_app():
     db.init_app(app)
     
     # Register blueprints
-    app.register_blueprint(admin_bp)
-    app.register_blueprint(api_bp)
-    
-    # Main routes
-    @app.route("/")
-    def index():
-        return render_template("index.html")
+    app.register_blueprint(frontend_bp)  # Frontend routes (public website)
+    app.register_blueprint(admin_bp, url_prefix='/admin')  # Admin routes
+    app.register_blueprint(api_bp)  # API routes
     
     @app.route("/health")
     def health():
-        return jsonify({"status": "healthy", "message": "Mind\"s Eye Photography v2.0 with persistent storage"})
+        return jsonify({"status": "healthy", "message": "TheMindsEyeStudio.com - Live!"})
     
     # Create database tables
     with app.app_context():

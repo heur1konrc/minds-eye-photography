@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mind's Eye Photography - Where Moments Meet Imagination</title>
+    <meta name="description" content="Professional photography services capturing life's most precious moments. Specializing in portraits, landscapes, events, and commercial photography.">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Mind's Eye Photography - Where Moments Meet Imagination">
+    <meta property="og:description" content="Professional photography services capturing life's most precious moments.">
+    <meta property="og:image" content="{{ url_for('static', filename='assets/' + hero_image) if hero_image else '' }}">
+    <meta property="og:url" content="https://TheMindsEyeStudio.com">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="nav-logo-text">Mind's Eye Photography</span>
+            </div>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/" class="nav-link active">Home</a>
+                <a href="/portfolio" class="nav-link">Portfolio</a>
+                <a href="/featured" class="nav-link">Featured</a>
+                <a href="/about" class="nav-link">About</a>
+                <a href="/contact" class="nav-link">Contact</a>
+                <a href="/admin" class="nav-link admin-link">Admin</a>
+            </div>
+            <div class="nav-toggle" id="nav-toggle">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+        <div class="hero-background">
+            {% if hero_image %}
+                <img src="{{ url_for('static', filename='assets/' + hero_image) }}" alt="Mind's Eye Photography" class="hero-image">
+            {% else %}
+                <div class="hero-placeholder"></div>
+            {% endif %}
+            <div class="hero-overlay"></div>
+        </div>
+        
+        <div class="hero-content">
+            <div class="hero-brand">
+                <div class="hero-logo">
+                    <div class="logo-icon">👁️</div>
+                </div>
+                <h1 class="hero-title">MIND'S EYE</h1>
+                <h2 class="hero-subtitle">PHOTOGRAPHY</h2>
+                <p class="hero-tagline">Where Moments Meet Imagination</p>
+            </div>
+            
+            <div class="hero-actions">
+                <a href="/portfolio" class="btn btn-primary">View Portfolio</a>
+                <a href="/contact" class="btn btn-secondary">Get Quote</a>
+            </div>
+        </div>
+        
+        <div class="hero-scroll">
+            <span class="scroll-text">Scroll to explore</span>
+            <div class="scroll-indicator"></div>
+        </div>
+    </section>
+
+    <!-- Featured Preview Section -->
+    <section class="featured-preview">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Latest Work</h2>
+                <p class="section-description">A glimpse into recent photography sessions and creative projects</p>
+            </div>
+            
+            <div class="featured-grid">
+                {% for image in featured_images %}
+                <div class="featured-item">
+                    <div class="featured-image-container">
+                        <img src="{{ url_for('static', filename='assets/' + image.filename) }}" 
+                             alt="{{ image.title }}" 
+                             class="featured-image"
+                             loading="lazy">
+                        <div class="featured-overlay">
+                            <div class="featured-content">
+                                <h3 class="featured-title">{{ image.title }}</h3>
+                                {% if image.categories %}
+                                    <div class="featured-categories">
+                                        {% for category in image.categories %}
+                                            <span class="category-tag">{{ category.name }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="featured-actions">
+                <a href="/portfolio" class="btn btn-outline">View Full Portfolio</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Preview -->
+    <section class="services-preview">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Photography Services</h2>
+                <p class="section-description">Professional photography for every occasion and vision</p>
+            </div>
+            
+            <div class="services-grid">
+                <div class="service-item">
+                    <div class="service-icon">📸</div>
+                    <h3 class="service-title">Portrait Photography</h3>
+                    <p class="service-description">Capturing the essence and personality of individuals and families</p>
+                </div>
+                
+                <div class="service-item">
+                    <div class="service-icon">🌄</div>
+                    <h3 class="service-title">Landscape Photography</h3>
+                    <p class="service-description">Showcasing the beauty and majesty of natural environments</p>
+                </div>
+                
+                <div class="service-item">
+                    <div class="service-icon">🎉</div>
+                    <h3 class="service-title">Event Photography</h3>
+                    <p class="service-description">Documenting special moments and celebrations with artistic flair</p>
+                </div>
+                
+                <div class="service-item">
+                    <div class="service-icon">🏢</div>
+                    <h3 class="service-title">Commercial Photography</h3>
+                    <p class="service-description">Professional imagery for businesses, products, and marketing</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to Capture Your Vision?</h2>
+                <p class="cta-description">Let's work together to create stunning photography that tells your unique story</p>
+                <div class="cta-actions">
+                    <a href="/contact" class="btn btn-primary">Start Your Project</a>
+                    <a href="/portfolio" class="btn btn-outline">View Our Work</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <div class="logo-icon">👁️</div>
+                        <span class="logo-text">Mind's Eye Photography</span>
+                    </div>
+                    <p class="footer-tagline">Where Moments Meet Imagination</p>
+                </div>
+                
+                <div class="footer-links">
+                    <div class="footer-section">
+                        <h4 class="footer-title">Navigation</h4>
+                        <ul class="footer-list">
+                            <li><a href="/" class="footer-link">Home</a></li>
+                            <li><a href="/portfolio" class="footer-link">Portfolio</a></li>
+                            <li><a href="/featured" class="footer-link">Featured</a></li>
+                            <li><a href="/about" class="footer-link">About</a></li>
+                            <li><a href="/contact" class="footer-link">Contact</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h4 class="footer-title">Services</h4>
+                        <ul class="footer-list">
+                            <li><a href="/portfolio?category=Portraits" class="footer-link">Portraits</a></li>
+                            <li><a href="/portfolio?category=Landscapes" class="footer-link">Landscapes</a></li>
+                            <li><a href="/portfolio?category=Events" class="footer-link">Events</a></li>
+                            <li><a href="/portfolio?category=Commercial" class="footer-link">Commercial</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h4 class="footer-title">Connect</h4>
+                        <div class="social-links">
+                            <a href="#" class="social-link">Instagram</a>
+                            <a href="#" class="social-link">Facebook</a>
+                            <a href="#" class="social-link">LinkedIn</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p class="footer-copyright">&copy; 2025 Mind's Eye Photography. All rights reserved.</p>
+                <p class="footer-website">TheMindsEyeStudio.com</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
+
