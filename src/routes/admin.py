@@ -1266,6 +1266,33 @@ def admin_backup():
 
 # ===== API ROUTES =====
 
+@admin_bp.route('/api/admin/portfolio')
+def get_admin_portfolio():
+    """Get all portfolio images for admin interface"""
+    try:
+        from models.database import PortfolioImage
+        images = PortfolioImage.query.filter_by(is_active=True).order_by(PortfolioImage.created_at.desc()).all()
+        
+        return jsonify({
+            'success': True,
+            'images': [{
+                'id': img.id,
+                'filename': img.filename,
+                'title': img.title,
+                'description': img.description,
+                'categories': [{'id': cat.id, 'name': cat.name} for cat in img.categories],
+                'created_at': img.created_at.isoformat() if img.created_at else None,
+                'file_size': img.file_size,
+                'camera_make': img.camera_make,
+                'lens': img.lens,
+                'aperture': img.aperture,
+                'shutter_speed': img.shutter_speed,
+                'iso': img.iso
+            } for img in images]
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @admin_bp.route('/api/admin/categories')
 def get_categories():
     """Get all categories for admin interface"""
