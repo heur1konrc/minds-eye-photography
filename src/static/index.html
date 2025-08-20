@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mind's Eye Photography - Professional Photography Services</title>
+    <meta name="description" content="Professional photography services by Mind's Eye Photography. Capturing life's precious moments with artistic vision and technical excellence.">
+    
+    <style>
+        :root {
+            --primary-color: #ff6b35;
+            --secondary-color: #1e3a8a;
+            --accent-color: #f59e0b;
+            --background-dark: #0f172a;
+            --background-light: #1e293b;
+            --text-light: #f8fafc;
+            --text-muted: #cbd5e1;
+            --overlay-opacity: 0.35;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--background-dark);
+            color: var(--text-light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Disable right-click and image protection */
+        img {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            pointer-events: none;
+            -webkit-touch-callout: none;
+            -webkit-user-drag: none;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 1rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-menu a {
+            color: var(--text-light);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-menu a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            background: linear-gradient(rgba(15, 23, 42, var(--overlay-opacity)), rgba(15, 23, 42, var(--overlay-opacity))), url('/assets/hero-bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-content h1 {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: var(--text-light);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+
+        .hero-content .tagline {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .cta-button:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 107, 53, 0.3);
+        }
+
+        /* Featured Image Section */
+        .featured-section {
+            padding: 5rem 0;
+            background: var(--background-light);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 3rem;
+        }
+
+        .featured-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .featured-image {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .featured-image img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        .featured-info h3 {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .featured-story {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+
+        .exif-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .exif-badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .exif-badge:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+        }
+
+        /* Portfolio Section */
+        .portfolio-section {
+            padding: 5rem 0;
+            background: var(--background-dark);
+        }
+
+        .portfolio-filters {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            color: var(--text-muted);
+            border: 2px solid var(--text-muted);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn.active,
+        .filter-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .portfolio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .portfolio-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .portfolio-item:hover {
+            transform: translateY(-10px);
+        }
+
+        .portfolio-item img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        .portfolio-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            color: white;
+            padding: 2rem 1.5rem 1.5rem;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .portfolio-item:hover .portfolio-overlay {
+            transform: translateY(0);
+        }
+
+        .portfolio-overlay h4 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .portfolio-categories {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .category-tag {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+
+        /* Contact Section */
+        .contact-section {
+            padding: 5rem 0;
+            background: var(--background-light);
+        }
+
+        .contact-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+        }
+
+        .contact-info h3 {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .contact-info p {
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .contact-form {
+            background: var(--background-dark);
+            padding: 2rem;
+            border-radius: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            background: var(--background-light);
+            border: 2px solid transparent;
+            border-radius: 5px;
+            color: var(--text-light);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            background: #e55a2b;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--background-dark);
+            padding: 2rem 0;
+            text-align: center;
+            border-top: 1px solid var(--background-light);
+        }
+
+        .footer p {
+            color: var(--text-muted);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .nav-menu {
+                display: none;
+            }
+
+            .hero-content h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-content .tagline {
+                font-size: 1.2rem;
+            }
+
+            .featured-content,
+            .contact-content {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .portfolio-filters {
+                gap: 0.5rem;
+            }
+
+            .filter-btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .exif-badges {
+                justify-content: center;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--background-light);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav-container">
+            <a href="#" class="logo">Mind's Eye Photography</a>
+            <ul class="nav-menu">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#portfolio">Portfolio</a></li>
+                <li><a href="#featured">Featured</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li><a href="/admin">Admin</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>Mind's Eye Photography</h1>
+            <p class="tagline">Capturing Life's Precious Moments</p>
+            <a href="#portfolio" class="cta-button">View Portfolio</a>
+        </div>
+    </section>
+
+    <!-- Featured Image Section -->
+    <section id="featured" class="featured-section">
+        <div class="container">
+            <h2 class="section-title">Weekly Featured Image</h2>
+            <div id="featured-content" class="featured-content">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Portfolio Section -->
+    <section id="portfolio" class="portfolio-section">
+        <div class="container">
+            <h2 class="section-title">Portfolio</h2>
+            <div id="portfolio-filters" class="portfolio-filters">
+                <button class="filter-btn active" data-category="all">All</button>
+            </div>
+            <div id="portfolio-grid" class="portfolio-grid">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <h2 class="section-title">Get In Touch</h2>
+            <div class="contact-content">
+                <div class="contact-info">
+                    <h3>Let's Create Something Beautiful</h3>
+                    <p>Ready to capture your special moments? I'd love to hear about your photography needs and discuss how we can bring your vision to life.</p>
+                    <p><strong>Email:</strong> info@mindseyephotography.com</p>
+                    <p><strong>Phone:</strong> (555) 123-4567</p>
+                </div>
+                <form class="contact-form" id="contact-form">
+                    <div class="form-group">
+                        <label for="name">Name *</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email *</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone</label>
+                        <input type="tel" id="phone" name="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="subject">Subject</label>
+                        <input type="text" id="subject" name="subject">
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Message *</label>
+                        <textarea id="message" name="message" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="submit-btn">Send Message</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Mind's Eye Photography. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Disable right-click context menu
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        
+        // Disable common keyboard shortcuts for developer tools
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' || 
+                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                (e.ctrlKey && e.shiftKey && e.key === 'C') ||
+                (e.ctrlKey && e.key === 'u')) {
+                e.preventDefault();
+            }
+        });
+
+        // API Base URL
+        const API_BASE = '/api';
+
+        // Load featured image
+        async function loadFeaturedImage() {
+            try {
+                const response = await fetch(`${API_BASE}/featured`);
+                const data = await response.json();
+                
+                const featuredContent = document.getElementById('featured-content');
+                
+                if (data.featured && data.featured.portfolio_image) {
+                    const featured = data.featured;
+                    const image = featured.portfolio_image;
+                    
+                    featuredContent.innerHTML = `
+                        <div class="featured-image">
+                            <img src="/assets/${image.filename}" alt="${featured.title}">
+                        </div>
+                        <div class="featured-info">
+                            <h3>${featured.title}</h3>
+                            <p class="featured-story">${featured.story || 'A beautiful capture from our portfolio.'}</p>
+                            <div class="exif-badges">
+                                <span class="exif-badge">📷 ${image.camera_make || 'Not Available'} ${image.camera_model || ''}</span>
+                                <span class="exif-badge">🔍 ${image.lens || 'Not Available'}</span>
+                                <span class="exif-badge">⚙️ ${image.aperture || 'N/A'}, ${image.shutter_speed || 'N/A'}, ISO ${image.iso || 'N/A'}</span>
+                                <span class="exif-badge">📅 ${image.date_taken ? new Date(image.date_taken).toLocaleDateString() : 'Not Available'}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    featuredContent.innerHTML = `
+                        <div class="featured-info" style="grid-column: 1 / -1; text-align: center;">
+                            <h3>No Featured Image</h3>
+                            <p class="featured-story">Check back soon for our weekly featured image!</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading featured image:', error);
+                document.getElementById('featured-content').innerHTML = `
+                    <div class="featured-info" style="grid-column: 1 / -1; text-align: center;">
+                        <h3>Unable to load featured image</h3>
+                        <p class="featured-story">Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load categories
+        async function loadCategories() {
+            try {
+                const response = await fetch(`${API_BASE}/categories`);
+                const data = await response.json();
+                
+                const filtersContainer = document.getElementById('portfolio-filters');
+                filtersContainer.innerHTML = '<button class="filter-btn active" data-category="all">All</button>';
+                
+                data.categories.forEach(category => {
+                    const button = document.createElement('button');
+                    button.className = 'filter-btn';
+                    button.setAttribute('data-category', category.name.toLowerCase());
+                    button.textContent = category.name;
+                    button.addEventListener('click', () => filterPortfolio(category.name.toLowerCase()));
+                    filtersContainer.appendChild(button);
+                });
+                
+                // Add event listener for "All" button
+                filtersContainer.querySelector('[data-category="all"]').addEventListener('click', () => filterPortfolio('all'));
+                
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+
+        // Load portfolio
+        async function loadPortfolio(category = 'all') {
+            try {
+                const url = category === 'all' ? `${API_BASE}/portfolio` : `${API_BASE}/portfolio?category=${category}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const portfolioGrid = document.getElementById('portfolio-grid');
+                
+                if (data.images && data.images.length > 0) {
+                    portfolioGrid.innerHTML = data.images.map(image => `
+                        <div class="portfolio-item">
+                            <img src="/assets/${image.filename}" alt="${image.title || image.original_filename}">
+                            <div class="portfolio-overlay">
+                                <h4>${image.title || image.original_filename}</h4>
+                                <p>${image.description || ''}</p>
+                                <div class="portfolio-categories">
+                                    ${image.categories.map(cat => `<span class="category-tag">${cat.name}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    portfolioGrid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                            <h3>No images found</h3>
+                            <p>Upload some images through the admin panel to get started!</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading portfolio:', error);
+                document.getElementById('portfolio-grid').innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                        <h3>Unable to load portfolio</h3>
+                        <p>Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Filter portfolio
+        function filterPortfolio(category) {
+            // Update active filter button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-category="${category}"]`).classList.add('active');
+            
+            // Load portfolio with filter
+            loadPortfolio(category);
+        }
+
+        // Handle contact form submission
+        document.getElementById('contact-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                name: formData.get('name'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                subject: formData.get('subject'),
+                message: formData.get('message')
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/contact`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Thank you! Your message has been sent successfully.');
+                    e.target.reset();
+                } else {
+                    const error = await response.json();
+                    alert('Error sending message: ' + error.message);
+                }
+            } catch (error) {
+                alert('Error sending message. Please try again later.');
+            }
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFeaturedImage();
+            loadCategories();
+            loadPortfolio();
+        });
+    </script>
+</body>
+</html>
+
