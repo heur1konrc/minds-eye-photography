@@ -9,7 +9,7 @@ import uuid
 
 admin_bp = Blueprint('admin', __name__)
 
-# Allowed file extensions
+# Allowed file extensions RC
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 def allowed_file(filename):
