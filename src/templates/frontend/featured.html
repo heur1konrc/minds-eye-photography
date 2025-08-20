@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Featured Image - Mind's Eye Photography</title>
+    <meta name="description" content="Discover our weekly featured photograph with story and technical details.">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Weekly Featured Image - Mind's Eye Photography">
+    <meta property="og:description" content="Discover our weekly featured photograph with story and technical details.">
+    {% if featured_image %}
+    <meta property="og:image" content="{{ url_for('static', filename='assets/' + featured_image.filename) }}">
+    {% endif %}
+    <meta property="og:url" content="https://TheMindsEyeStudio.com/featured">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="nav-logo-text">Mind's Eye Photography</span>
+            </div>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/portfolio" class="nav-link">Portfolio</a>
+                <a href="/featured" class="nav-link active">Featured</a>
+                <a href="/about" class="nav-link">About</a>
+                <a href="/contact" class="nav-link">Contact</a>
+                <a href="/admin" class="nav-link admin-link">Admin</a>
+            </div>
+            <div class="nav-toggle" id="nav-toggle">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Featured Image Section -->
+    <section class="featured-section">
+        <div class="container">
+            <div class="featured-header">
+                <h1 class="featured-title">Weekly Featured Image</h1>
+                <p class="featured-subtitle">Discover the story behind our latest masterpiece</p>
+            </div>
+
+            {% if featured_image %}
+            <div class="featured-content">
+                <div class="featured-image-container">
+                    <img src="{{ url_for('static', filename='assets/' + featured_image.filename) }}" 
+                         alt="{{ featured_image.title }}" 
+                         class="featured-image"
+                         onclick="openLightbox('{{ url_for('static', filename='assets/' + featured_image.filename) }}', '{{ featured_image.title }}')">
+                    <div class="featured-overlay">
+                        <button class="download-btn" onclick="downloadImage('{{ url_for('static', filename='assets/' + featured_image.filename) }}', '{{ featured_image.title }}')">
+                            <span class="download-icon">⬇</span>
+                            Download Hi-Res Image
+                        </button>
+                    </div>
+                </div>
+
+                <div class="featured-details">
+                    <h2 class="image-title">{{ featured_image.title }}</h2>
+                    <p class="image-description">{{ featured_image.description or "A captivating moment captured through the lens of imagination." }}</p>
+                    
+                    <div class="image-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Categories:</span>
+                            <div class="category-tags">
+                                {% for category in featured_image.categories %}
+                                <span class="category-tag">{{ category.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="meta-item">
+                            <span class="meta-label">Captured:</span>
+                            <span class="meta-value">{{ featured_image.created_at.strftime('%B %d, %Y') if featured_image.created_at else 'Recently' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="social-share">
+                        <h3>Share This Image</h3>
+                        <div class="share-buttons">
+                            <button class="share-btn facebook" onclick="shareToFacebook()">Facebook</button>
+                            <button class="share-btn twitter" onclick="shareToTwitter()">Twitter</button>
+                            <button class="share-btn instagram" onclick="shareToInstagram()">Instagram</button>
+                            <button class="share-btn copy-link" onclick="copyShareLink()">Copy Link</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="no-featured">
+                <h2>No Featured Image Yet</h2>
+                <p>Check back soon for our weekly featured photograph!</p>
+                <a href="/portfolio" class="cta-button">Browse Portfolio</a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <div class="lightbox-content">
+            <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+            <img id="lightbox-image" src="" alt="">
+            <div class="lightbox-caption" id="lightbox-caption"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Featured image specific functionality
+        function openLightbox(imageSrc, title) {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImage = document.getElementById('lightbox-image');
+            const lightboxCaption = document.getElementById('lightbox-caption');
+            
+            lightboxImage.src = imageSrc;
+            lightboxCaption.textContent = title;
+            lightbox.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        function downloadImage(imageSrc, title) {
+            const link = document.createElement('a');
+            link.href = imageSrc;
+            link.download = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.jpg';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function shareToFacebook() {
+            const url = encodeURIComponent(window.location.href);
+            window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+        }
+
+        function shareToTwitter() {
+            const url = encodeURIComponent(window.location.href);
+            const text = encodeURIComponent('Check out this amazing photograph from Mind\'s Eye Photography!');
+            window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
+        }
+
+        function shareToInstagram() {
+            // Instagram doesn't support direct sharing, so copy link instead
+            copyShareLink();
+            alert('Link copied! You can now paste it in your Instagram story or bio.');
+        }
+
+        function copyShareLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const btn = document.querySelector('.copy-link');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLightbox();
+            }
+        });
+    </script>
+</body>
+</html>
+

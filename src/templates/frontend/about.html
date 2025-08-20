@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Mind's Eye Photography</title>
+    <meta name="description" content="Learn about Mind's Eye Photography - our vision, story, and passion for capturing life's most precious moments.">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="About - Mind's Eye Photography">
+    <meta property="og:description" content="Learn about Mind's Eye Photography - our vision, story, and passion for capturing life's most precious moments.">
+    <meta property="og:url" content="https://TheMindsEyeStudio.com/about">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="nav-logo-text">Mind's Eye Photography</span>
+            </div>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/portfolio" class="nav-link">Portfolio</a>
+                <a href="/featured" class="nav-link">Featured</a>
+                <a href="/about" class="nav-link active">About</a>
+                <a href="/contact" class="nav-link">Contact</a>
+                <a href="/admin" class="nav-link admin-link">Admin</a>
+            </div>
+            <div class="nav-toggle" id="nav-toggle">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- About Section -->
+    <section class="about-section">
+        <div class="container">
+            <div class="about-header">
+                <h1 class="about-title">About Mind's Eye Photography</h1>
+                <p class="about-subtitle">Where Moments Meet Imagination</p>
+            </div>
+
+            <div class="about-content">
+                <div class="about-story">
+                    <div class="story-text">
+                        <h2>Our Vision</h2>
+                        <p>At Mind's Eye Photography, we believe that every moment tells a story. Our mission is to capture the essence of life's most precious moments through the lens of imagination and artistry.</p>
+                        
+                        <p>Photography is more than just taking pictures – it's about freezing time, preserving emotions, and creating lasting memories that will be treasured for generations to come.</p>
+
+                        <h3>What We Do</h3>
+                        <p>We specialize in a wide range of photography services, each approached with the same level of passion and professionalism:</p>
+                        
+                        <ul class="services-list">
+                            <li><strong>Portrait Photography</strong> - Capturing the unique personality and essence of individuals and families</li>
+                            <li><strong>Landscape Photography</strong> - Showcasing the natural beauty of our world</li>
+                            <li><strong>Event Photography</strong> - Documenting life's special celebrations and milestones</li>
+                            <li><strong>Commercial Photography</strong> - Professional imagery for businesses and brands</li>
+                            <li><strong>Fine Art Photography</strong> - Creative expressions that push the boundaries of visual storytelling</li>
+                        </ul>
+
+                        <h3>Our Approach</h3>
+                        <p>Every photograph we create is a collaboration between artist and subject. We take the time to understand your vision, your story, and your unique needs. Whether it's a intimate portrait session, a grand celebration, or a commercial project, we bring the same level of creativity, technical expertise, and personal attention to every shoot.</p>
+
+                        <p>We believe in the power of authentic moments – those genuine expressions, spontaneous interactions, and natural emotions that make each photograph truly special.</p>
+                    </div>
+
+                    {% if showcase_images %}
+                    <div class="showcase-gallery">
+                        <h3>Our Work</h3>
+                        <div class="showcase-grid">
+                            {% for image in showcase_images %}
+                            <div class="showcase-item">
+                                <img src="{{ url_for('static', filename='assets/' + image.filename) }}" 
+                                     alt="{{ image.title }}" 
+                                     class="showcase-image"
+                                     onclick="openLightbox('{{ url_for('static', filename='assets/' + image.filename) }}', '{{ image.title }}')">
+                                <div class="showcase-overlay">
+                                    <h4>{{ image.title }}</h4>
+                                    <div class="showcase-categories">
+                                        {% for category in image.categories %}
+                                        <span class="category-tag">{{ category.name }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="about-cta">
+                    <h3>Ready to Create Something Beautiful?</h3>
+                    <p>Let's work together to capture your special moments and bring your vision to life.</p>
+                    <div class="cta-buttons">
+                        <a href="/contact" class="cta-button primary">Get in Touch</a>
+                        <a href="/portfolio" class="cta-button secondary">View Portfolio</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <div class="lightbox-content">
+            <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+            <img id="lightbox-image" src="" alt="">
+            <div class="lightbox-caption" id="lightbox-caption"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Lightbox functionality
+        function openLightbox(imageSrc, title) {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImage = document.getElementById('lightbox-image');
+            const lightboxCaption = document.getElementById('lightbox-caption');
+            
+            lightboxImage.src = imageSrc;
+            lightboxCaption.textContent = title;
+            lightbox.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLightbox();
+            }
+        });
+    </script>
+</body>
+</html>
+
