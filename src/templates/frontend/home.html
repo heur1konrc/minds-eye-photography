@@ -23,7 +23,7 @@
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-brand">
-                <span class="nav-logo-text">Mind's Eye Photography</span>
+                <img src="{{ url_for('static', filename='images/minds-eye-logo.png') }}" alt="Mind's Eye Photography" class="nav-logo">
             </div>
             <div class="nav-menu" id="nav-menu">
                 <a href="/" class="nav-link active">Home</a>
@@ -31,7 +31,6 @@
                 <a href="/featured" class="nav-link">Featured</a>
                 <a href="/about" class="nav-link">About</a>
                 <a href="/contact" class="nav-link">Contact</a>
-                <a href="/admin" class="nav-link admin-link">Admin</a>
             </div>
             <div class="nav-toggle" id="nav-toggle">
                 <span class="bar"></span>
@@ -54,9 +53,7 @@
         
         <div class="hero-content">
             <div class="hero-brand">
-                <div class="hero-logo">
-                    <div class="logo-icon">👁️</div>
-                </div>
+                <img src="{{ url_for('static', filename='images/minds-eye-logo.png') }}" alt="Mind's Eye Photography" class="hero-logo">
                 <h1 class="hero-title">MIND'S EYE</h1>
                 <h2 class="hero-subtitle">PHOTOGRAPHY</h2>
                 <p class="hero-tagline">Where Moments Meet Imagination</p>
@@ -84,7 +81,7 @@
             
             <div class="featured-grid">
                 {% for image in featured_images %}
-                <div class="featured-item">
+                <div class="featured-item" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 100 }}">
                     <div class="featured-image-container">
                         <img src="{{ url_for('static', filename='assets/' + image.filename) }}" 
                              alt="{{ image.title }}" 
@@ -122,25 +119,25 @@
             </div>
             
             <div class="services-grid">
-                <div class="service-item">
+                <div class="service-item" data-aos="fade-up">
                     <div class="service-icon">📸</div>
                     <h3 class="service-title">Portrait Photography</h3>
                     <p class="service-description">Capturing the essence and personality of individuals and families</p>
                 </div>
                 
-                <div class="service-item">
+                <div class="service-item" data-aos="fade-up" data-aos-delay="100">
                     <div class="service-icon">🌄</div>
                     <h3 class="service-title">Landscape Photography</h3>
                     <p class="service-description">Showcasing the beauty and majesty of natural environments</p>
                 </div>
                 
-                <div class="service-item">
+                <div class="service-item" data-aos="fade-up" data-aos-delay="200">
                     <div class="service-icon">🎉</div>
                     <h3 class="service-title">Event Photography</h3>
                     <p class="service-description">Documenting special moments and celebrations with artistic flair</p>
                 </div>
                 
-                <div class="service-item">
+                <div class="service-item" data-aos="fade-up" data-aos-delay="300">
                     <div class="service-icon">🏢</div>
                     <h3 class="service-title">Commercial Photography</h3>
                     <p class="service-description">Professional imagery for businesses, products, and marketing</p>
@@ -168,10 +165,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">
-                    <div class="footer-logo">
-                        <div class="logo-icon">👁️</div>
-                        <span class="logo-text">Mind's Eye Photography</span>
-                    </div>
+                    <img src="{{ url_for('static', filename='images/minds-eye-logo.png') }}" alt="Mind's Eye Photography" class="footer-logo">
                     <p class="footer-tagline">Where Moments Meet Imagination</p>
                 </div>
                 
@@ -217,6 +211,14 @@
 
     <!-- Scripts -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+    </script>
 </body>
 </html>
 

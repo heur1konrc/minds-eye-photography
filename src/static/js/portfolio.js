@@ -1,274 +1,416 @@
-// Portfolio Gallery JavaScript
+// Portfolio JavaScript - Category Filtering and Lightbox
 
-class PortfolioGallery {
+class PortfolioManager {
     constructor() {
-        this.images = [];
-        this.filteredImages = [];
-        this.currentFilter = 'all';
-        this.currentLightboxIndex = 0;
+        this.currentImages = [];
+        this.currentImageIndex = 0;
+        this.isLightboxOpen = false;
         
         this.init();
     }
     
-    async init() {
-        await this.loadImages();
-        this.setupFilters();
-        this.setupLightbox();
-        this.renderGallery();
+    init() {
+        this.setupEventListeners();
+        this.loadPortfolioData();
+        this.setupImageLoading();
     }
     
-    async loadImages() {
-        try {
-            const response = await fetch('/api/portfolio/images');
-            const data = await response.json();
-            
-            if (data.success) {
-                this.images = data.images;
-                this.filteredImages = [...this.images];
-                this.updateImageCount();
-            } else {
-                console.error('Failed to load images:', data.error);
-                this.showError('Failed to load portfolio images');
-            }
-        } catch (error) {
-            console.error('Error loading images:', error);
-            this.showError('Network error loading portfolio');
-        }
-    }
-    
-    setupFilters() {
-        const filterButtons = document.querySelectorAll('.filter-btn');
-        
-        filterButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                // Update active button
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                
-                // Filter images
-                const category = button.dataset.category;
-                this.filterImages(category);
+    setupEventListeners() {
+        // Category filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.handleCategoryFilter(e.target.dataset.category);
             });
         });
-    }
-    
-    filterImages(category) {
-        this.currentFilter = category;
         
-        if (category === 'all') {
-            this.filteredImages = [...this.images];
-        } else {
-            this.filteredImages = this.images.filter(image => 
-                image.categories.some(cat => 
-                    cat.name.toLowerCase() === category.toLowerCase()
-                )
-            );
-        }
-        
-        this.updateImageCount();
-        this.renderGallery();
-    }
-    
-    updateImageCount() {
-        const countElement = document.getElementById('image-count');
-        if (countElement) {
-            countElement.textContent = this.filteredImages.length;
-        }
-    }
-    
-    renderGallery() {
-        const galleryGrid = document.getElementById('gallery-grid');
-        
-        if (this.filteredImages.length === 0) {
-            galleryGrid.innerHTML = `
-                <div class="loading-spinner">
-                    <p>No images found for this category</p>
-                </div>
-            `;
-            return;
-        }
-        
-        const galleryHTML = this.filteredImages.map((image, index) => `
-            <div class="gallery-item" data-index="${index}" onclick="portfolioGallery.openLightbox(${index})">
-                <div class="gallery-image-container">
-                    <img 
-                        src="/static/assets/${image.filename}" 
-                        alt="${image.title || 'Portfolio Image'}"
-                        class="gallery-image portfolio-image"
-                        loading="lazy"
-                        oncontextmenu="return false"
-                        ondragstart="return false"
-                    >
-                </div>
-                <div class="gallery-overlay">
-                    <h3 class="gallery-title">${image.title || 'Untitled'}</h3>
-                    ${image.categories.length > 0 ? `
-                        <div class="gallery-categories">
-                            ${image.categories.map(cat => `
-                                <span class="gallery-category-tag">${cat.name}</span>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                    ${image.description ? `
-                        <p class="gallery-description">${image.description}</p>
-                    ` : ''}
-                </div>
-            </div>
-        `).join('');
-        
-        galleryGrid.innerHTML = galleryHTML;
-        
-        // Add stagger animation
-        const items = galleryGrid.querySelectorAll('.gallery-item');
-        items.forEach((item, index) => {
-            item.style.animationDelay = `${index * 0.1}s`;
-            item.classList.add('fade-in');
-        });
-    }
-    
-    setupLightbox() {
-        const lightbox = document.getElementById('lightbox');
-        const lightboxClose = document.getElementById('lightbox-close');
-        const lightboxOverlay = document.getElementById('lightbox-overlay');
-        const lightboxPrev = document.getElementById('lightbox-prev');
-        const lightboxNext = document.getElementById('lightbox-next');
-        
-        // Close lightbox
-        [lightboxClose, lightboxOverlay].forEach(element => {
-            element.addEventListener('click', () => this.closeLightbox());
+        // Category tags in gallery items
+        document.querySelectorAll('.category-tag').forEach(tag => {
+            tag.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.handleCategoryFilter(e.target.dataset.category);
+            });
         });
         
-        // Navigation
-        lightboxPrev.addEventListener('click', () => this.previousImage());
-        lightboxNext.addEventListener('click', () => this.nextImage());
+        // Gallery view buttons
+        document.querySelectorAll('.gallery-view-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const imageId = e.target.dataset.imageId;
+                this.openLightbox(imageId);
+            });
+        });
+        
+        // Gallery items click
+        document.querySelectorAll('.gallery-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const imageId = item.querySelector('.gallery-view-btn').dataset.imageId;
+                this.openLightbox(imageId);
+            });
+        });
+        
+        // Lightbox controls
+        this.setupLightboxControls();
         
         // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (!lightbox.classList.contains('active')) return;
-            
-            switch(e.key) {
-                case 'Escape':
-                    this.closeLightbox();
-                    break;
-                case 'ArrowLeft':
-                    this.previousImage();
-                    break;
-                case 'ArrowRight':
-                    this.nextImage();
-                    break;
+            if (this.isLightboxOpen) {
+                this.handleKeyboardNavigation(e);
             }
         });
     }
     
-    openLightbox(index) {
-        this.currentLightboxIndex = index;
-        const lightbox = document.getElementById('lightbox');
+    setupLightboxControls() {
+        const lightboxModal = document.getElementById('lightbox-modal');
+        const lightboxOverlay = document.getElementById('lightbox-overlay');
+        const lightboxClose = document.getElementById('lightbox-close');
+        const lightboxPrev = document.getElementById('lightbox-prev');
+        const lightboxNext = document.getElementById('lightbox-next');
         
-        this.updateLightboxContent();
-        lightbox.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-    
-    closeLightbox() {
-        const lightbox = document.getElementById('lightbox');
-        lightbox.classList.remove('active');
-        document.body.style.overflow = '';
-    }
-    
-    previousImage() {
-        this.currentLightboxIndex = 
-            (this.currentLightboxIndex - 1 + this.filteredImages.length) % this.filteredImages.length;
-        this.updateLightboxContent();
-    }
-    
-    nextImage() {
-        this.currentLightboxIndex = 
-            (this.currentLightboxIndex + 1) % this.filteredImages.length;
-        this.updateLightboxContent();
-    }
-    
-    updateLightboxContent() {
-        const image = this.filteredImages[this.currentLightboxIndex];
+        if (lightboxOverlay) {
+            lightboxOverlay.addEventListener('click', () => this.closeLightbox());
+        }
         
+        if (lightboxClose) {
+            lightboxClose.addEventListener('click', () => this.closeLightbox());
+        }
+        
+        if (lightboxPrev) {
+            lightboxPrev.addEventListener('click', () => this.previousImage());
+        }
+        
+        if (lightboxNext) {
+            lightboxNext.addEventListener('click', () => this.nextImage());
+        }
+    }
+    
+    async loadPortfolioData() {
+        try {
+            const response = await fetch('/api/portfolio');
+            this.currentImages = await response.json();
+            this.updateImageCount();
+        } catch (error) {
+            console.error('Error loading portfolio data:', error);
+        }
+    }
+    
+    handleCategoryFilter(category) {
+        // Update active filter button
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const activeBtn = document.querySelector(`[data-category="${category}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+        
+        // Filter gallery items
+        this.filterGalleryItems(category);
+        
+        // Update URL without page reload
+        const url = new URL(window.location);
+        if (category === 'all') {
+            url.searchParams.delete('category');
+        } else {
+            url.searchParams.set('category', category);
+        }
+        window.history.pushState({}, '', url);
+        
+        // Update image count
+        this.updateImageCount(category);
+    }
+    
+    filterGalleryItems(category) {
+        const galleryItems = document.querySelectorAll('.gallery-item');
+        let visibleCount = 0;
+        
+        galleryItems.forEach((item, index) => {
+            const itemCategories = item.dataset.categories.split(',');
+            const shouldShow = category === 'all' || itemCategories.includes(category);
+            
+            if (shouldShow) {
+                item.style.display = 'block';
+                item.classList.remove('filtered-out');
+                
+                // Stagger animation
+                setTimeout(() => {
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateY(0)';
+                }, index * 50);
+                
+                visibleCount++;
+            } else {
+                item.style.opacity = '0';
+                item.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    item.style.display = 'none';
+                    item.classList.add('filtered-out');
+                }, 300);
+            }
+        });
+        
+        // Update stats
+        const imageCountElement = document.getElementById('image-count');
+        if (imageCountElement) {
+            imageCountElement.textContent = visibleCount;
+        }
+    }
+    
+    updateImageCount(category = null) {
+        let count = this.currentImages.length;
+        
+        if (category && category !== 'all') {
+            count = this.currentImages.filter(img => 
+                img.categories.includes(category)
+            ).length;
+        }
+        
+        const imageCountElement = document.getElementById('image-count');
+        if (imageCountElement) {
+            imageCountElement.textContent = count;
+        }
+    }
+    
+    async openLightbox(imageId) {
+        const image = this.currentImages.find(img => img.id == imageId);
+        if (!image) return;
+        
+        this.currentImageIndex = this.currentImages.findIndex(img => img.id == imageId);
+        this.isLightboxOpen = true;
+        
+        // Populate lightbox content
+        this.populateLightboxContent(image);
+        
+        // Show lightbox
+        const lightboxModal = document.getElementById('lightbox-modal');
+        if (lightboxModal) {
+            lightboxModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Load EXIF data if available
+        this.loadImageMetadata(image);
+    }
+    
+    populateLightboxContent(image) {
         const lightboxImage = document.getElementById('lightbox-image');
         const lightboxTitle = document.getElementById('lightbox-title');
         const lightboxDescription = document.getElementById('lightbox-description');
         const lightboxCategories = document.getElementById('lightbox-categories');
-        const lightboxExif = document.getElementById('lightbox-exif');
         
-        // Update image
-        lightboxImage.src = `/static/assets/${image.filename}`;
-        lightboxImage.alt = image.title || 'Portfolio Image';
-        
-        // Update title
-        lightboxTitle.textContent = image.title || 'Untitled';
-        
-        // Update description
-        lightboxDescription.textContent = image.description || '';
-        lightboxDescription.style.display = image.description ? 'block' : 'none';
-        
-        // Update categories
-        if (image.categories.length > 0) {
-            lightboxCategories.innerHTML = image.categories.map(cat => `
-                <span class="lightbox-category-tag">${cat.name}</span>
-            `).join('');
-            lightboxCategories.style.display = 'flex';
-        } else {
-            lightboxCategories.style.display = 'none';
+        if (lightboxImage) {
+            lightboxImage.src = image.url;
+            lightboxImage.alt = image.title;
         }
         
-        // Update EXIF data
-        if (image.exif_data && Object.keys(image.exif_data).length > 0) {
-            const exifHTML = Object.entries(image.exif_data).map(([key, value]) => `
-                <div class="exif-item">
-                    <span class="exif-label">${this.formatExifKey(key)}:</span>
-                    <span class="exif-value">${value}</span>
-                </div>
-            `).join('');
+        if (lightboxTitle) {
+            lightboxTitle.textContent = image.title;
+        }
+        
+        if (lightboxDescription) {
+            lightboxDescription.textContent = image.description || '';
+            lightboxDescription.style.display = image.description ? 'block' : 'none';
+        }
+        
+        if (lightboxCategories) {
+            lightboxCategories.innerHTML = image.categories.map(cat => 
+                `<span class="category-tag" data-category="${cat}">${cat}</span>`
+            ).join('');
             
-            lightboxExif.innerHTML = exifHTML;
-            lightboxExif.style.display = 'block';
-        } else {
-            lightboxExif.style.display = 'none';
+            // Add click handlers to category tags
+            lightboxCategories.querySelectorAll('.category-tag').forEach(tag => {
+                tag.addEventListener('click', (e) => {
+                    this.closeLightbox();
+                    setTimeout(() => {
+                        this.handleCategoryFilter(e.target.dataset.category);
+                    }, 300);
+                });
+            });
         }
     }
     
-    formatExifKey(key) {
-        // Convert EXIF keys to readable format
-        const keyMap = {
-            'camera': 'Camera',
-            'lens': 'Lens',
-            'focal_length': 'Focal Length',
-            'aperture': 'Aperture',
-            'shutter_speed': 'Shutter Speed',
-            'iso': 'ISO',
-            'flash': 'Flash',
-            'date_taken': 'Date Taken'
-        };
+    async loadImageMetadata(image) {
+        const lightboxMeta = document.getElementById('lightbox-meta');
+        if (!lightboxMeta) return;
         
-        return keyMap[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        try {
+            // Try to load EXIF data from API
+            const response = await fetch(`/api/portfolio/image/${image.id}/metadata`);
+            
+            if (response.ok) {
+                const metadata = await response.json();
+                this.displayMetadata(metadata);
+            } else {
+                // No EXIF data available
+                lightboxMeta.innerHTML = `
+                    <div class="meta-title">Image Information</div>
+                    <div class="meta-item">
+                        <span class="meta-label">Filename:</span>
+                        <span class="meta-value">${image.filename}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Upload Date:</span>
+                        <span class="meta-value">${new Date(image.created_at).toLocaleDateString()}</span>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading image metadata:', error);
+            lightboxMeta.innerHTML = `
+                <div class="meta-title">Image Information</div>
+                <div class="meta-item">
+                    <span class="meta-label">Filename:</span>
+                    <span class="meta-value">${image.filename}</span>
+                </div>
+            `;
+        }
     }
     
-    showError(message) {
-        const galleryGrid = document.getElementById('gallery-grid');
-        galleryGrid.innerHTML = `
-            <div class="loading-spinner">
-                <p style="color: var(--primary-color);">${message}</p>
-                <button onclick="portfolioGallery.loadImages()" class="btn btn-primary" style="margin-top: 1rem;">
-                    Try Again
-                </button>
-            </div>
-        `;
+    displayMetadata(metadata) {
+        const lightboxMeta = document.getElementById('lightbox-meta');
+        if (!lightboxMeta) return;
+        
+        let metaHTML = '<div class="meta-title">Technical Details</div>';
+        
+        if (metadata.camera) {
+            metaHTML += `
+                <div class="meta-item">
+                    <span class="meta-label">Camera:</span>
+                    <span class="meta-value">${metadata.camera}</span>
+                </div>
+            `;
+        }
+        
+        if (metadata.lens) {
+            metaHTML += `
+                <div class="meta-item">
+                    <span class="meta-label">Lens:</span>
+                    <span class="meta-value">${metadata.lens}</span>
+                </div>
+            `;
+        }
+        
+        if (metadata.settings) {
+            metaHTML += `
+                <div class="meta-item">
+                    <span class="meta-label">Settings:</span>
+                    <span class="meta-value">${metadata.settings}</span>
+                </div>
+            `;
+        }
+        
+        if (metadata.iso) {
+            metaHTML += `
+                <div class="meta-item">
+                    <span class="meta-label">ISO:</span>
+                    <span class="meta-value">${metadata.iso}</span>
+                </div>
+            `;
+        }
+        
+        if (metadata.focal_length) {
+            metaHTML += `
+                <div class="meta-item">
+                    <span class="meta-label">Focal Length:</span>
+                    <span class="meta-value">${metadata.focal_length}</span>
+                </div>
+            `;
+        }
+        
+        lightboxMeta.innerHTML = metaHTML;
+    }
+    
+    closeLightbox() {
+        const lightboxModal = document.getElementById('lightbox-modal');
+        if (lightboxModal) {
+            lightboxModal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        this.isLightboxOpen = false;
+    }
+    
+    previousImage() {
+        if (this.currentImageIndex > 0) {
+            this.currentImageIndex--;
+            const image = this.currentImages[this.currentImageIndex];
+            this.populateLightboxContent(image);
+            this.loadImageMetadata(image);
+        }
+    }
+    
+    nextImage() {
+        if (this.currentImageIndex < this.currentImages.length - 1) {
+            this.currentImageIndex++;
+            const image = this.currentImages[this.currentImageIndex];
+            this.populateLightboxContent(image);
+            this.loadImageMetadata(image);
+        }
+    }
+    
+    handleKeyboardNavigation(e) {
+        switch (e.key) {
+            case 'Escape':
+                this.closeLightbox();
+                break;
+            case 'ArrowLeft':
+                this.previousImage();
+                break;
+            case 'ArrowRight':
+                this.nextImage();
+                break;
+        }
+    }
+    
+    setupImageLoading() {
+        // Lazy loading for gallery images
+        const galleryImages = document.querySelectorAll('.gallery-image');
+        
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.classList.add('loading');
+                    
+                    img.onload = () => {
+                        img.classList.remove('loading');
+                        img.classList.add('loaded');
+                    };
+                    
+                    observer.unobserve(img);
+                }
+            });
+        });
+        
+        galleryImages.forEach(img => {
+            imageObserver.observe(img);
+        });
     }
 }
 
-// Initialize portfolio gallery when DOM is loaded
-let portfolioGallery;
-
+// Initialize portfolio manager when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    portfolioGallery = new PortfolioGallery();
+    new PortfolioManager();
 });
 
-// Export for global access
-window.portfolioGallery = portfolioGallery;
+// Handle browser back/forward navigation
+window.addEventListener('popstate', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const category = urlParams.get('category') || 'all';
+    
+    // Update filter without triggering history change
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const activeBtn = document.querySelector(`[data-category="${category}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+    
+    // Filter items
+    const portfolioManager = new PortfolioManager();
+    portfolioManager.filterGalleryItems(category);
+});
 
