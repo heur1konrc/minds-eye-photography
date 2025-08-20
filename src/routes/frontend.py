@@ -14,7 +14,7 @@ frontend_bp = Blueprint('frontend', __name__)
 def home():
     """Home page with hero background and branding"""
     # Get hero background image (admin-selectable)
-    hero_image = get_hero_background()
+    hero_image = get_hero_background() or 'hero-background.jpg'
     
     # Get featured portfolio images for preview
     featured_images = PortfolioImage.query.filter_by(is_active=True).limit(6).all()
