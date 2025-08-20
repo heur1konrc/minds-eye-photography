@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio - Mind's Eye Photography</title>
+    <meta name="description" content="Explore the photography portfolio of Mind's Eye Photography. Browse by category: Nature, Portraits, Landscapes, Events, and more.">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/logo.png') }}">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/portfolio.css') }}">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('frontend.home') }}" class="nav-brand">
+                <span class="nav-logo-text">Mind's Eye</span> Photography
+            </a>
+            
+            <div class="nav-menu" id="nav-menu">
+                <a href="{{ url_for('frontend.home') }}" class="nav-link">Home</a>
+                <a href="{{ url_for('frontend.portfolio') }}" class="nav-link active">Portfolio</a>
+                <a href="{{ url_for('frontend.featured') }}" class="nav-link">Featured</a>
+                <a href="{{ url_for('frontend.about') }}" class="nav-link">About</a>
+                <a href="{{ url_for('frontend.contact') }}" class="nav-link">Contact</a>
+                <a href="/admin" class="nav-link admin-link">Admin</a>
+            </div>
+            
+            <div class="nav-toggle" id="nav-toggle">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Portfolio Header -->
+    <section class="portfolio-header">
+        <div class="container">
+            <div class="section-header">
+                <h1 class="section-title">Photography Portfolio</h1>
+                <p class="section-description">
+                    Explore a curated collection of moments captured through the lens of imagination. 
+                    Each image tells a unique story, from intimate portraits to breathtaking landscapes.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Portfolio Filters -->
+    <section class="portfolio-filters">
+        <div class="container">
+            <div class="filter-controls">
+                <button class="filter-btn active" data-category="all">All Categories</button>
+                <button class="filter-btn" data-category="nature">Nature</button>
+                <button class="filter-btn" data-category="portraits">Portraits</button>
+                <button class="filter-btn" data-category="landscapes">Landscapes</button>
+                <button class="filter-btn" data-category="events">Events</button>
+                <button class="filter-btn" data-category="commercial">Commercial</button>
+                <button class="filter-btn" data-category="petscape">PETSCAPE</button>
+            </div>
+            
+            <div class="portfolio-stats">
+                <span id="image-count">Loading...</span> images
+            </div>
+        </div>
+    </section>
+
+    <!-- Portfolio Gallery -->
+    <section class="portfolio-gallery">
+        <div class="container">
+            <div class="gallery-grid" id="gallery-grid">
+                <!-- Images will be loaded dynamically -->
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Loading portfolio...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <div class="lightbox-overlay" id="lightbox-overlay"></div>
+        <div class="lightbox-content">
+            <button class="lightbox-close" id="lightbox-close">&times;</button>
+            <button class="lightbox-prev" id="lightbox-prev">&#8249;</button>
+            <button class="lightbox-next" id="lightbox-next">&#8250;</button>
+            
+            <div class="lightbox-image-container">
+                <img class="lightbox-image" id="lightbox-image" alt="">
+            </div>
+            
+            <div class="lightbox-info">
+                <h3 class="lightbox-title" id="lightbox-title"></h3>
+                <p class="lightbox-description" id="lightbox-description"></p>
+                <div class="lightbox-categories" id="lightbox-categories"></div>
+                <div class="lightbox-exif" id="lightbox-exif"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Call to Action -->
+    <section class="cta-section">
+        <div class="container">
+            <h2 class="cta-title">Ready to Create Something Beautiful?</h2>
+            <p class="cta-description">
+                Let's work together to capture your vision and create stunning photography that tells your unique story.
+            </p>
+            <div class="cta-actions">
+                <a href="{{ url_for('frontend.contact') }}" class="btn btn-primary">Get Quote</a>
+                <a href="{{ url_for('frontend.featured') }}" class="btn btn-secondary">View Featured</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="Mind's Eye Photography" class="logo-image">
+                        <span class="logo-text">Mind's Eye Photography</span>
+                    </div>
+                    <p class="footer-tagline">Where Moments Meet Imagination</p>
+                </div>
+                
+                <div class="footer-links">
+                    <div class="footer-section">
+                        <h4 class="footer-title">Navigation</h4>
+                        <ul class="footer-list">
+                            <li><a href="{{ url_for('frontend.home') }}" class="footer-link">Home</a></li>
+                            <li><a href="{{ url_for('frontend.portfolio') }}" class="footer-link">Portfolio</a></li>
+                            <li><a href="{{ url_for('frontend.featured') }}" class="footer-link">Featured</a></li>
+                            <li><a href="{{ url_for('frontend.about') }}" class="footer-link">About</a></li>
+                            <li><a href="{{ url_for('frontend.contact') }}" class="footer-link">Contact</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h4 class="footer-title">Services</h4>
+                        <ul class="footer-list">
+                            <li><span class="footer-link">Portrait Photography</span></li>
+                            <li><span class="footer-link">Landscape Photography</span></li>
+                            <li><span class="footer-link">Event Photography</span></li>
+                            <li><span class="footer-link">Commercial Photography</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h4 class="footer-title">Contact</h4>
+                        <ul class="footer-list">
+                            <li><span class="footer-link">info@themindseyestudio.com</span></li>
+                            <li><span class="footer-link">608-219-6066</span></li>
+                        </ul>
+                        
+                        <div class="social-links">
+                            <a href="#" class="social-link" aria-label="Facebook">📘</a>
+                            <a href="#" class="social-link" aria-label="Instagram">📷</a>
+                            <a href="#" class="social-link" aria-label="Twitter">🐦</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p class="footer-copyright">&copy; 2025 Mind's Eye Photography. All rights reserved.</p>
+                <p class="footer-website">TheMindsEyeStudio.com</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/portfolio.js') }}"></script>
+    
+    <!-- Image Protection Script -->
+    <script>
+        // Disable right-click on portfolio images
+        document.addEventListener('contextmenu', function(e) {
+            if (e.target.tagName === 'IMG' && e.target.classList.contains('portfolio-image')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Disable drag and drop on portfolio images
+        document.addEventListener('dragstart', function(e) {
+            if (e.target.tagName === 'IMG' && e.target.classList.contains('portfolio-image')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Disable keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Disable Ctrl+S, Ctrl+A, Ctrl+C, etc.
+            if (e.ctrlKey && (e.key === 's' || e.key === 'a' || e.key === 'c' || e.key === 'v')) {
+                e.preventDefault();
+                return false;
+            }
+            // Disable F12 (Developer Tools)
+            if (e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>
+

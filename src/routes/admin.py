@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template_string, request, jsonify, send_file, current_app, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, send_file, current_app, redirect, url_for
 from werkzeug.utils import secure_filename
 import os
 import json
@@ -6,6 +6,7 @@ import tarfile
 import tempfile
 from datetime import datetime
 import uuid
+from models.database import db, PortfolioImage, Category
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -1238,30 +1239,30 @@ def get_base_template():
 
 # ===== MAIN ROUTES =====
 
-@admin_bp.route('/admin')
+@admin_bp.route('/')
 def admin_dashboard():
-    """Default admin route - goes directly to portfolio management"""
-    return render_template_string(get_base_template())
+    """Main admin dashboard - Portfolio Management"""
+    return render_template('admin/admin.html')
 
-@admin_bp.route('/admin/portfolio')
-def portfolio_management():
-    return render_template_string(get_base_template())
+@admin_bp.route('/portfolio')
+def admin_portfolio():
+    """Portfolio Management"""
+    return render_template('admin/admin.html')
 
-@admin_bp.route('/admin/upload')
-def upload_interface():
-    return render_template_string(get_base_template())
+@admin_bp.route('/upload')
+def admin_upload():
+    """Upload Management"""
+    return render_template('admin/admin.html')
 
-@admin_bp.route('/admin/categories')
-def category_management():
-    return render_template_string(get_base_template())
+@admin_bp.route('/categories')
+def admin_categories():
+    """Category Management"""
+    return render_template('admin/admin.html')
 
-@admin_bp.route('/admin/backup')
-def backup_management():
-    return render_template_string(get_base_template())
-
-# ===== API ROUTES =====
-
-@admin_bp.route('/api/admin/categories')
+@admin_bp.route('/backup')
+def admin_backup():
+    """Backup Management"""
+    return render_template('admin/admin.html')'/api/admin/categories')
 def get_categories():
     """Get all categories for admin interface"""
     try:
