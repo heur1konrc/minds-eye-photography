@@ -1262,7 +1262,11 @@ def admin_categories():
 @admin_bp.route('/backup')
 def admin_backup():
     """Backup Management"""
-    return render_template('admin/admin.html')'/api/admin/categories')
+    return render_template('admin/admin.html')
+
+# ===== API ROUTES =====
+
+@admin_bp.route('/api/admin/categories')
 def get_categories():
     """Get all categories for admin interface"""
     try:
