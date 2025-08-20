@@ -47,7 +47,7 @@ def portfolio():
                          current_category=category_filter)
 
 @frontend_bp.route('/featured')
-def weekly_featured():
+def featured():
     """Weekly Featured Image page"""
     # Get most recent portfolio image as featured
     featured_image = PortfolioImage.query.filter_by(is_active=True).order_by(desc(PortfolioImage.created_at)).first()
